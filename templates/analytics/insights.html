@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}Management Insights · University Analytics{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <div>
+      <span class="technical-label">INSIGHT / DECISION</span>
+      <h1>Management Insights</h1>
+      <p>Detailed, data-supported findings ordered by severity.</p>
+    </div>
+    <a class="btn btn-outline-primary" href="{% url 'dashboard' %}"><i class="bi bi-arrow-left" aria-hidden="true"></i> Dashboard</a>
+  </div>
+
+  {% if not has_data %}
+    <div class="dashboard-card empty-state">
+      <i class="bi bi-clipboard-data empty-icon" aria-hidden="true"></i>
+      <h2>No insights yet</h2>
+      <p>Upload enrollment data to start generating supported findings.</p>
+      <a class="btn btn-primary" href="{% url 'upload_data' %}">Upload data</a>
+    </div>
+  {% else %}
+    <div class="insight-list">
+      {% for insight in insights %}
+        <article class="insight insight-{{ insight.level }}">
+          <i class="bi {% if insight.level == 'danger' %}bi-exclamation-octagon{% elif insight.level == 'warning' %}bi-exclamation-triangle{% else %}bi-info-circle{% endif %}" aria-hidden="true"></i>
+          <div>
+            <span class="technical-label">{{ insight.category }}</span>
+            <strong class="d-block mt-1">{{ insight.text }}</strong>
+            <p>{{ insight.decision }}</p>
+          </div>
+        </article>
+      {% empty %}
+        <div class="dashboard-card"><i class="bi bi-check-circle me-2" aria-hidden="true"></i>No critical issues detected.</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endblock %}

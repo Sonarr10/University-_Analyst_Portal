@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard · University Analytics{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <div>
+      <span class="technical-label">UNIVERSITY / OVERVIEW</span>
+      <h1>Decision Support Dashboard</h1>
+      <p>Enrollment, academic performance, and attendance in one evidence-based view.</p>
+    </div>
+    <a class="btn btn-primary" href="{% url 'upload_data' %}"><i class="bi bi-cloud-arrow-up"></i> Upload data</a>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-heading"><span>STUDENTS</span><i class="bi bi-people" aria-hidden="true"></i></div>
+      <strong>{{ kpis.students }}</strong>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-heading"><span>TEACHERS</span><i class="bi bi-person-badge" aria-hidden="true"></i></div>
+      <strong>{{ kpis.teachers }}</strong>
+      {% if teacher_shortage_pools %}
+        <span class="kpi-status {% if teacher_shortage_critical %}kpi-status-danger{% else %}kpi-status-warning{% endif %}">⚠ Shortage</span>
+      {% endif %}
+    </div>
+    <div class="kpi-card"><div class="kpi-heading"><span>ROOMS</span><i class="bi bi-building" aria-hidden="true"></i></div><strong>{{ kpis.rooms }}</strong></div>
+    <div class="kpi-card"><span>DEPARTMENTS</span><strong>{{ kpis.departments }}</strong></div>
+    <div class="kpi-card"><span>MAJORS</span><strong>{{ kpis.majors }}</strong></div>
+    <div class="kpi-card"><span>AVERAGE SCORE</span><strong>{{ kpis.average_score|default:'No Data' }}</strong></div>
+    <div class="kpi-card">
+      <span>PASS RATE</span>
+      <strong>{% if kpis.pass_rate != None %}{{ kpis.pass_rate }}%{% else %}No Data{% endif %}</strong>
+    </div>
+    <div class="kpi-card">
+      <span>AVG ATTENDANCE</span>
+      <strong>{% if kpis.average_attendance != None %}{{ kpis.average_attendance }}%{% else %}No Data{% endif %}</strong>
+    </div>
+    <div class="kpi-card risk"><span>ATTENDANCE RISK</span><strong>{{ kpis.risk_count }}</strong></div>
+  </div>
+
+  <section class="section-block">
+    <div class="section-heading insight-preview-heading">
+      <div>
+        <span class="technical-label">CAPACITY / ENROLLMENT</span>
+        <h2>Enrollment Availability</h2>
+      </div>
+      <a class="btn btn-sm btn-outline-primary" href="{% url 'enrollment_dashboard' %}">View Enrollment Capacity <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+    </div>
+    {% if not has_data %}
+      <div class="dashboard-card text-secondary">No enrollment data yet.</div>
+    {% elif availability_alerts %}
+      <div class="availability-grid">
+        {% for row in availability_alerts %}
+          <article class="dashboard-card availability-item">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi {% if row.status == 'Full' or row.status == 'Over Capacity' %}bi-exclamation-octagon text-danger{% else %}bi-exclamation-triangle text-warning{% endif %}" aria-hidden="true"></i>
+              <strong>{{ row.major__name }} · {{ row.shift }}</strong>
+            </div>
+            <p>{{ row.status }}{% if row.status == 'Near Capacity' or row.status == 'Full' %} · {{ row.supported_remaining_seats }} supported seats remaining{% endif %}</p>
+            <small>{% if row.recommended_shift %}Recommended: {{ row.recommended_shift }} · {{ row.recommended_capacity }} supported seats available{% else %}{{ row.recommendation }}{% endif %}</small>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="dashboard-card text-secondary">Current enrollment groups have supported capacity.</div>
+    {% endif %}
+  </section>
+
+  {% if not has_data %}
+    {% include 'analytics/partials/empty_state.html' %}
+  {% else %}
+    <section class="section-block">
+      <div class="section-heading">
+        <span class="technical-label">QUESTION / DEMAND</span>
+        <h2>Where is enrollment demand concentrated?</h2>
+      </div>
+      <div class="row g-4">
+        <div class="col-lg-6"><div class="dashboard-card chart-card"><h3>Enrollment by Department</h3><canvas id="departmentChart"></canvas></div></div>
+        <div class="col-lg-6"><div class="dashboard-card chart-card"><h3>Enrollment by Major</h3><canvas id="majorChart"></canvas></div></div>
+        <div class="col-lg-5"><div class="dashboard-card chart-card"><h3>Students by Shift</h3><canvas id="shiftChart"></canvas></div></div>
+        <div class="col-lg-7"><div class="dashboard-card chart-card"><h3>Required Sections by Major</h3><canvas id="requiredMajorChart"></canvas></div></div>
+        <div class="col-12"><div class="dashboard-card chart-card"><h3>Required Sections vs Available Teachers</h3><p class="card-note">Department and shift totals; each active teacher counts once in each selected shift.</p><canvas id="capacityChart"></canvas></div></div>
+        <div class="col-lg-7"><div class="dashboard-card chart-card"><h3>Average Score by Subject</h3><canvas id="scoreChart"></canvas></div></div>
+        <div class="col-lg-5"><div class="dashboard-card chart-card"><h3>Pass vs Fail</h3><canvas id="passChart"></canvas></div></div>
+        <div class="col-lg-5"><div class="dashboard-card chart-card"><h3>Attendance Risk Distribution</h3><canvas id="attendanceChart"></canvas></div></div>
+        <div class="col-lg-7">
+          <div class="dashboard-card chart-card">
+            <h3>Attendance vs Score</h3>
+            <p class="card-note">Relationship analysis for matched student/subject records.</p>
+            <canvas id="scatterChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-block">
+      <div class="section-heading insight-preview-heading">
+        <div>
+          <span class="technical-label">INSIGHT / DECISION</span>
+          <h2>Management insights</h2>
+        </div>
+        <a class="btn btn-sm btn-outline-primary" href="{% url 'insights' %}">View all insights <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+      </div>
+      <div class="dashboard-card insight-preview">
+        {% for insight in dashboard_insights %}
+          <div class="insight-preview-row">
+            <span class="insight-preview-icon insight-preview-icon-{{ insight.level }}" aria-hidden="true"><i class="bi {% if insight.level == 'danger' %}bi-exclamation-octagon{% elif insight.level == 'warning' %}bi-exclamation-triangle{% else %}bi-info-circle{% endif %}"></i></span>
+            <span>{{ insight.summary }}</span>
+          </div>
+        {% empty %}
+          <div class="insight-preview-row"><span class="insight-preview-icon insight-preview-icon-info" aria-hidden="true"><i class="bi bi-check-circle"></i></span><span>No critical issues detected.</span></div>
+        {% endfor %}
+      </div>
+    </section>
+
+    {{ enrollment_department|json_script:'department-data' }}
+    {{ enrollment_major|json_script:'major-data' }}
+    {{ enrollment_shift|json_script:'shift-data' }}
+    {{ required_major|json_script:'required-major-data' }}
+    {{ capacity_chart|json_script:'capacity-data' }}
+    {{ subject_scores|json_script:'score-data' }}
+    {{ pass_fail|json_script:'pass-data' }}
+    {{ attendance_status|json_script:'attendance-data' }}
+    {{ scatter|json_script:'scatter-data' }}
+  {% endif %}
+{% endblock %}
+
+{% block scripts %}
+  {% if has_data %}
+    <script>portalCharts.dashboard();</script>
+  {% endif %}
+{% endblock %}

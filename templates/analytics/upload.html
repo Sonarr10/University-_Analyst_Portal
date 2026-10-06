@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block title %}Upload Data · University Analytics{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <div>
+      <span class="technical-label">DATA PIPELINE / EXCEL</span>
+      <h1>Upload Data</h1>
+      <p>Validate and clean workbooks before valid rows enter the database.</p>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-xl-7">
+      <div class="dashboard-card">
+        <h2 class="section-title">New validation batch</h2>
+        <form method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          {% for field in form %}
+            <div class="mb-3">
+              <label class="form-label">{{ field.label }}</label>
+              {{ field }}
+              {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+              {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+            </div>
+          {% endfor %}
+          <button class="btn btn-primary"><i class="bi bi-shield-check"></i> Validate workbook</button>
+        </form>
+      </div>
+    </div>
+    <div class="col-xl-5">
+      <div class="dashboard-card">
+        <h2 class="section-title">Excel templates</h2>
+        <p class="text-secondary">Start with the exact headers expected by the validator.</p>
+        <div class="d-grid gap-2">
+          <a class="btn btn-outline-primary text-start" href="{% url 'excel_template' 'enrollment' %}"><i class="bi bi-file-earmark-excel me-2"></i>Enrollment template</a>
+          <a class="btn btn-outline-primary text-start" href="{% url 'excel_template' 'performance' %}"><i class="bi bi-file-earmark-excel me-2"></i>Performance template</a>
+          <a class="btn btn-outline-primary text-start" href="{% url 'excel_template' 'attendance' %}"><i class="bi bi-file-earmark-excel me-2"></i>Attendance template</a>
+        </div>
+      </div>
+      <div class="dashboard-card mt-4">
+        <h2 class="section-title">Teacher demo workbooks</h2>
+        <p class="text-secondary">Synthetic files designed to create visible capacity, score, and attendance findings.</p>
+        <div class="d-grid gap-2">
+          <a class="btn btn-outline-primary text-start" href="{% url 'download_demo' 'master' %}">Download Master Data Demo</a>
+          <a class="btn btn-outline-primary text-start" href="{% url 'download_demo' 'enrollment' %}">Download Enrollment Demo</a>
+          <a class="btn btn-outline-primary text-start" href="{% url 'download_demo' 'performance' %}">Download Performance Demo</a>
+          <a class="btn btn-outline-primary text-start" href="{% url 'download_demo' 'attendance' %}">Download Attendance Demo</a>
+        </div>
+        <a class="d-inline-block mt-3" href="{% url 'import_master_data' %}">Import Master Data →</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="dashboard-card mt-4">
+    <h2 class="section-title">Recent batches</h2>
+    <div class="table-responsive">
+      <table class="table data-table">
+        <thead><tr><th>File</th><th>Dataset</th><th>Valid</th><th>Rejected</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          {% for batch in recent_batches %}
+            <tr>
+              <td>{{ batch.filename }}</td>
+              <td>{{ batch.get_dataset_type_display }}</td>
+              <td>{{ batch.summary.valid_rows }}</td>
+              <td>{{ batch.summary.rejected_rows }}</td>
+              <td>
+                {% if batch.imported_at %}
+                  <span class="badge status-good">Imported</span>
+                {% else %}
+                  <span class="badge status-warning">Review</span>
+                {% endif %}
+              </td>
+              <td><a href="{% url 'import_review' batch.pk %}">Open</a></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6" class="table-empty">No uploads yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}

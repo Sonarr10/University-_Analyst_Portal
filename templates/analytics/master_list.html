@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% load analytics_tags %}
+
+{% block title %}{{ title }}s · University Analytics{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <div>
+      <span class="technical-label">SETUP / MASTER DATA</span>
+      <h1>{{ title }}s</h1>
+      <p>Maintain trusted reference data used by Excel validation and analysis.</p>
+    </div>
+    <a class="btn btn-primary" href="{{ create_url }}"><i class="bi bi-plus-lg"></i> Add {{ title }}</a>
+  </div>
+  <div class="dashboard-card p-0 overflow-hidden">
+    <div class="table-responsive">
+      <table class="table data-table mb-0">
+        <thead>
+          <tr>
+            {% if kind == 'teacher' %}
+              <th>Teacher</th><th>Department</th><th>Available shifts</th><th>Subjects can teach</th><th>Status</th>
+            {% else %}
+              {% for key,label in columns %}<th>{{ label }}</th>{% endfor %}
+            {% endif %}
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for object in objects %}
+            <tr>
+              {% if kind == 'teacher' %}
+                <td><strong>{{ object.name }}</strong>{% if object.email %}<br><small class="text-secondary">{{ object.email }}</small>{% endif %}</td>
+                <td>{{ object.department.code }}</td>
+                <td>{{ object.available_shifts|join:', ' }}</td>
+                <td>
+                  {% for subject in object.subjects_can_teach.all %}
+                    <span class="d-block">{{ subject.name }}</span>
+                  {% empty %}
+                    <span class="text-secondary">None selected</span>
+                  {% endfor %}
+                </td>
+                <td>{% if object.active %}<span class="badge status-good">Active</span>{% else %}<span class="badge text-bg-secondary">Inactive</span>{% endif %}</td>
+              {% else %}
+                {% for key,label in columns %}
+                  <td>
+                    {% with value=object|attr:key %}
+                      {% if value == True %}
+                        <span class="badge status-good">Active</span>
+                      {% elif value == False %}
+                        <span class="badge text-bg-secondary">Inactive</span>
+                      {% else %}
+                        {{ value }}
+                      {% endif %}
+                    {% endwith %}
+                  </td>
+                {% endfor %}
+              {% endif %}
+              <td class="text-end">
+                <a class="btn btn-sm btn-outline-primary" href="{% url kind|add:'_update' object.pk %}">Edit</a>
+                <a class="btn btn-sm btn-outline-danger" href="{% url kind|add:'_delete' object.pk %}">Delete</a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="{% if kind == 'teacher' %}6{% else %}8{% endif %}"><div class="table-empty">No {{ title|lower }} records yet.</div></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}

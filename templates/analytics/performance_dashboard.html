@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% block title %}Academic Performance · University Analytics{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <div>
+      <span class="technical-label">ANALYSIS / PERFORMANCE</span>
+      <h1>Academic Performance</h1>
+      <p>Which subjects and students need academic support?</p>
+    </div>
+    <a class="btn btn-primary" href="{% url 'upload_data' %}">Upload performance</a>
+  </div>
+
+  {% if not has_data %}
+    <div class="dashboard-card empty-state">
+      <div class="empty-icon"><i class="bi bi-bar-chart"></i></div>
+      <h2>No performance data</h2>
+      <p>Upload a validated performance workbook after students and subjects are configured.</p>
+      <a class="btn btn-primary" href="{% url 'upload_data' %}">Upload performance</a>
+    </div>
+  {% else %}
+    <div class="kpi-grid mb-4">
+      <div class="kpi-card"><span>AVERAGE SCORE</span><strong>{{ average }}</strong></div>
+      <div class="kpi-card"><span>PASS RATE</span><strong>{{ pass_rate }}%</strong></div>
+      <div class="kpi-card risk"><span>FAIL RATE</span><strong>{{ fail_rate }}%</strong></div>
+      <div class="kpi-card"><span>AVG GRADE POINT</span><strong>{{ average_grade_point|floatformat:2 }}</strong><small>Simplified, not official GPA</small></div>
+      <div class="kpi-card"><span>BEST SUBJECT</span><strong class="kpi-text">{{ best.subject__name }}</strong></div>
+      <div class="kpi-card"><span>WEAKEST SUBJECT</span><strong class="kpi-text">{{ weakest.subject__name }}</strong></div>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-lg-8"><div class="dashboard-card chart-card"><h3>Average Score by Subject</h3><canvas id="subjectChart"></canvas></div></div>
+      <div class="col-lg-4"><div class="dashboard-card chart-card"><h3>Grade Distribution</h3><canvas id="gradeChart"></canvas></div></div>
+    </div>
+
+    <div class="dashboard-card p-0 overflow-hidden mt-4">
+      <div class="card-heading">
+        <div><span class="technical-label">ACTION / ACADEMIC SUPPORT</span><h2>Students with low scores</h2></div>
+      </div>
+      <div class="table-responsive">
+        <table class="table data-table mb-0">
+          <thead><tr><th>Student</th><th>Subject</th><th>Score</th><th>Grade</th><th>Status</th></tr></thead>
+          <tbody>
+            {% for record in low_scores %}
+              <tr>
+                <td>{{ record.student.student_id }} · {{ record.student.student_name }}</td>
+                <td>{{ record.subject.name }}</td>
+                <td>{{ record.score }}</td>
+                <td>{{ record.letter_grade }}</td>
+                <td><span class="badge status-critical">Fail</span></td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="5" class="table-empty">No failing scores.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {{ subject_chart|json_script:'subject-data' }}
+    {{ grade_chart|json_script:'grade-data' }}
+  {% endif %}
+{% endblock %}
+
+{% block scripts %}
+  {% if has_data %}
+    <script>portalCharts.performance();</script>
+  {% endif %}
+{% endblock %}

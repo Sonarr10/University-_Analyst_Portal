@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }} · University Analytics{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <div>
+      <span class="technical-label">SETUP / MASTER DATA</span>
+      <h1>{{ title }}</h1>
+      <p>Fields marked with an asterisk are required.</p>
+    </div>
+  </div>
+  <div class="dashboard-card form-card">
+    <form method="post">
+      {% csrf_token %}
+      {% for field in form %}
+        <div class="mb-3">
+          {% if field.widget_type == 'checkboxselectmultiple' %}
+            <fieldset>
+              <legend class="form-label fs-6">{{ field.label }}{% if field.field.required %} *{% endif %}</legend>
+              {{ field }}
+            </fieldset>
+          {% elif field.widget_type == 'checkbox' %}
+            <div class="form-check">
+              {{ field }}
+              <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} *{% endif %}</label>
+            </div>
+          {% else %}
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} *{% endif %}</label>
+            {{ field }}
+          {% endif %}
+          {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+          {% if kind == 'teacher' and field.name == 'subjects_can_teach' %}
+            <div class="form-text" id="teacher-subject-count" aria-live="polite">Selected: 0 / 3</div>
+          {% endif %}
+          {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+        </div>
+      {% endfor %}
+      <div class="d-flex gap-2">
+        <button class="btn btn-primary">Save</button>
+        <a href="{{ list_url }}" class="btn btn-outline-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+  {% if kind == 'teacher' %}
+    {{ form.subjects_by_department|json_script:'teacher-subject-data' }}
+  {% endif %}
+{% endblock %}
+
+{% block scripts %}
+  {% if kind == 'teacher' %}
+    <script src="{% static 'js/teacher_form.js' %}"></script>
+  {% endif %}
+{% endblock %}

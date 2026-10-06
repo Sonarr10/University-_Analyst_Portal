@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block title %}Register · University Analytics{% endblock %}
+
+{% block content %}
+  <div class="auth-card">
+    <div class="auth-brand"><span class="brand-mark">UA</span><span>ADMIN / DATA ANALYST</span></div>
+    <h1>Create your account</h1>
+    <p class="text-secondary">Secure access for the university analytics workspace.</p>
+    <form method="post">
+      {% csrf_token %}
+      {% for field in form %}
+        <div class="mb-3">
+          <label class="form-label">{{ field.label }}</label>
+          {{ field }}
+          {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
+          {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+        </div>
+      {% endfor %}
+      <button class="btn btn-primary w-100">Create account</button>
+    </form>
+    <p class="small text-center mt-4 mb-0">Already registered? <a href="{% url 'login' %}">Sign in</a></p>
+  </div>
+{% endblock %}

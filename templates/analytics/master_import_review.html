@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}Review Master Data · University Analytics{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <div>
+      <span class="technical-label">DATA QUALITY / MASTER DATA</span>
+      <h1>Review Master Data</h1>
+      <p>{{ batch.filename }} · uploaded {{ batch.uploaded_at|date:'M j, Y H:i' }}</p>
+    </div>
+    {% if not batch.imported_at and batch.summary.valid_rows %}
+      <form method="post" action="{% url 'import_confirm' batch.pk %}">
+        {% csrf_token %}
+        <button class="btn btn-primary">Import {{ batch.summary.valid_rows }} valid rows</button>
+      </form>
+    {% endif %}
+  </div>
+  {% if batch.imported_at %}
+    <div class="alert alert-success">Master data imported successfully. Rejected rows were not imported.</div>
+  {% endif %}
+  <div class="dashboard-card p-0 overflow-hidden mb-4">
+    <div class="card-heading"><div><span class="technical-label">PREVIEW / FIVE SHEETS</span><h2>Cleaning summary</h2></div><span class="badge status-critical">{{ batch.summary.rejected_rows }} rejected</span></div>
+    <div class="table-responsive">
+      <table class="table data-table mb-0">
+        <thead><tr><th>Sheet</th><th>Total</th><th>Valid</th><th>Rejected</th></tr></thead>
+        <tbody>
+          {% for name, counts in master_summaries %}
+            <tr><td>{{ name }}</td><td>{{ counts.total }}</td><td>{{ counts.valid }}</td><td>{{ counts.rejected }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="dashboard-card p-0 overflow-hidden">
+    <div class="card-heading"><div><span class="technical-label">REJECTED / ROW ISSUES</span><h2>Validation issues</h2></div></div>
+    <div class="table-responsive">
+      <table class="table data-table mb-0">
+        <thead><tr><th>Sheet / Excel row</th><th>Issue</th><th>Submitted data</th></tr></thead>
+        <tbody>
+          {% for issue in batch.issues %}
+            <tr>
+              <td>{{ issue.sheet }} / {{ issue.row }}</td>
+              <td>{% for error in issue.errors %}<div class="text-danger">{{ error }}</div>{% endfor %}</td>
+              <td><code>{{ issue.data }}</code></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="3" class="table-empty">No data quality issues found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <a class="btn btn-outline-secondary mt-3" href="{% url 'import_master_data' %}">Back to master import</a>
+{% endblock %}

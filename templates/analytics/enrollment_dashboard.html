@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+
+{% block title %}Enrollment &amp; Capacity · University Analytics{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <div>
+      <span class="technical-label">ANALYSIS / CAPACITY</span>
+      <h1>Enrollment &amp; Capacity</h1>
+      <p>How many sections are needed, and do shared teachers and rooms support them?</p>
+    </div>
+    <a class="btn btn-primary" href="{% url 'upload_data' %}">Upload enrollment</a>
+  </div>
+
+  {% if not has_data %}
+    <div class="dashboard-card text-secondary mb-4">No enrollment data yet.</div>
+    {% include 'analytics/partials/empty_state.html' %}
+  {% else %}
+    <div class="kpi-grid mb-4">
+      <div class="kpi-card"><span>STUDENTS</span><strong>{{ kpis.students }}</strong></div>
+      <div class="kpi-card"><span>REQUIRED SECTIONS</span><strong>{{ total_required }}</strong><small>Sum of major + shift groups</small></div>
+      <div class="kpi-card"><span>SHARED ROOMS</span><strong>{{ kpis.rooms }}</strong><small>Active classrooms across all shifts</small></div>
+      <div class="kpi-card"><span>TEACHERS</span><strong>{{ kpis.teachers }}</strong><small>{% if teacher_shortage_pools %}<span class="capacity-alert">{{ teacher_shortage_pools|length }} department/shift groups need teachers</span>{% else %}Teacher capacity sufficient{% endif %}</small></div>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-lg-6"><div class="dashboard-card chart-card"><h3>Enrollment by Department</h3><canvas id="departmentChart"></canvas></div></div>
+      <div class="col-lg-6"><div class="dashboard-card chart-card"><h3>Enrollment by Major</h3><canvas id="majorChart"></canvas></div></div>
+      <div class="col-lg-6"><div class="dashboard-card chart-card"><h3>Students by Shift</h3><canvas id="shiftChart"></canvas></div></div>
+      <div class="col-lg-6"><div class="dashboard-card chart-card"><h3>Required Sections by Major</h3><canvas id="requiredMajorChart"></canvas></div></div>
+      <div class="col-lg-6"><div class="dashboard-card chart-card"><h3>Required Sections vs Available Teachers</h3><p class="card-note">Department and shift totals.</p><canvas id="capacityChart"></canvas></div></div>
+      <div class="col-lg-6"><div class="dashboard-card chart-card"><h3>Required Rooms vs Shared Rooms</h3><p class="card-note">Shift-wide demand; rooms are not assigned to majors.</p><canvas id="roomChart"></canvas></div></div>
+    </div>
+
+    <div class="dashboard-card p-0 overflow-hidden mt-4">
+      <div class="card-heading">
+        <div><span class="technical-label">QUESTION / CAN WE SUPPORT DEMAND?</span><h2>Capacity status by major and shift</h2><p class="card-note mb-0">Potential extra sections are independent scenarios using shared spare resources; they are not reserved or assigned.</p></div>
+      </div>
+      <div class="table-responsive">
+        <table class="table data-table mb-0">
+          <thead>
+            <tr><th>Department</th><th>Major</th><th>Shift</th><th>Students</th><th>Required sections</th><th>Teacher capacity</th><th>Required rooms</th><th>Shift rooms available</th><th>Remaining seats</th><th>Status</th><th>Recommended shift</th></tr>
+          </thead>
+          <tbody>
+            {% for row in capacity_rows %}
+              <tr>
+                <td>{{ row.major__department__code }}</td>
+                <td><strong>{{ row.major__name }}</strong></td>
+                <td>{{ row.shift }}</td>
+                <td>{{ row.students }}</td>
+                <td>{{ row.required }}</td>
+                <td>{{ row.teacher_capacity }} <small class="d-block text-secondary">{{ row.department_required }} required across department</small></td>
+                <td>{{ row.required_rooms }}</td>
+                <td>{{ row.shift_rooms_available }} <small class="d-block text-secondary">{{ row.shift_rooms_used }} required shift-wide</small></td>
+                <td>{{ row.remaining_seats }} <small class="d-block text-secondary">in calculated sections</small>{% if row.can_open_section %}<small class="d-block text-primary">Another section could support up to 25 more.</small>{% endif %}</td>
+                <td>
+                  {% if row.status == 'Available' %}
+                    <span class="badge status-good">Available</span>
+                  {% elif row.status == 'Full' or row.status == 'Over Capacity' %}
+                    <span class="badge status-critical">{{ row.status }}</span>
+                  {% else %}
+                    <span class="badge status-warning">{{ row.status }}</span>
+                  {% endif %}
+                  {% if row.resource_note %}<small class="d-block mt-1">{{ row.resource_note }}</small>{% endif %}
+                </td>
+                <td>{% if row.recommended_shift %}<strong>{{ row.recommended_shift }}</strong><small class="d-block text-secondary">{{ row.recommended_capacity }} supported seats available</small>{% elif row.recommendation %}<small>{{ row.recommendation }}</small>{% else %}<span class="text-secondary">—</span>{% endif %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="row g-4 mt-1">
+      <div class="col-lg-6">
+        <div class="dashboard-card p-0 overflow-hidden h-100">
+          <div class="card-heading"><div><span class="technical-label">SHARED / DEPARTMENT + SHIFT</span><h2>Teacher capacity</h2></div></div>
+          <div class="table-responsive">
+            <table class="table data-table mb-0">
+              <thead><tr><th>Department / Shift</th><th>Required sections</th><th>Active teachers available</th><th>Status</th></tr></thead>
+              <tbody>
+                {% for pool in teacher_pools %}
+                  <tr><td>{{ pool.department }} / {{ pool.shift }}</td><td>{{ pool.required }}</td><td>{{ pool.capacity }}</td><td>{% if pool.shortage %}<span class="badge status-critical">Need {{ pool.shortage }} more teacher{{ pool.shortage|pluralize }}</span>{% elif pool.status == 'At Capacity' %}<span class="badge status-warning">At Capacity</span>{% else %}<span class="badge status-good">Good</span> <small>{{ pool.spare }} spare</small>{% endif %}</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="dashboard-card p-0 overflow-hidden h-100">
+          <div class="card-heading"><div><span class="technical-label">SHARED / SHIFT</span><h2>Room capacity</h2></div></div>
+          <div class="table-responsive">
+            <table class="table data-table mb-0">
+              <thead><tr><th>Shift</th><th>Rooms required</th><th>Active rooms</th><th>Remaining</th><th>Status</th></tr></thead>
+              <tbody>
+                {% for pool in shift_pools %}
+                  <tr>
+                    <td>{{ pool.shift }}</td><td>{{ pool.required }}</td><td>{{ pool.capacity }}</td><td>{{ pool.remaining }}</td>
+                    <td>{% if pool.shortage %}<span class="badge status-critical">Room Capacity Limit · {{ pool.shortage }} short</span>{% elif pool.status == 'At Room Capacity' %}<span class="badge status-warning">At Room Capacity</span>{% else %}<span class="badge status-good">Available</span>{% endif %}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dashboard-card p-0 overflow-hidden mt-4">
+      <div class="card-heading"><div><span class="technical-label">SECTION / 25 SEATS MAX</span><h2>Analytical section breakdown</h2><p class="card-note mb-0">A full calculated section does not, by itself, make a major and shift full. No rooms or teachers are assigned here.</p></div></div>
+      <div class="table-responsive">
+        <table class="table data-table mb-0">
+          <thead><tr><th>Major / Shift</th><th>Section</th><th>Students</th><th>Occupancy</th><th>Seats remaining / Status</th></tr></thead>
+          <tbody>
+            {% for section in section_occupancy %}
+              <tr>
+                <td>{{ section.major }} / {{ section.shift }}</td>
+                <td>{{ section.section }}</td>
+                <td>{{ section.students }} / {{ section.maximum }}</td>
+                <td><div class="occupancy-track"><div class="occupancy-fill" style="width: {{ section.percentage }}%"></div></div><small>{{ section.percentage }}%</small></td>
+                <td>
+                  {{ section.remaining_seats }} seats ·
+                  {% if section.status == 'Full' %}<span class="badge status-critical">Full</span>
+                  {% elif section.status == 'Near Full' or section.status == 'Getting Full' %}<span class="badge status-warning">{{ section.status }}</span>
+                  {% else %}<span class="badge status-good">Normal</span>{% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {{ enrollment_department|json_script:'department-data' }}
+    {{ enrollment_major|json_script:'major-data' }}
+    {{ enrollment_shift|json_script:'shift-data' }}
+    {{ required_major|json_script:'required-major-data' }}
+    {{ capacity_chart|json_script:'capacity-data' }}
+    {{ room_chart|json_script:'room-data' }}
+  {% endif %}
+{% endblock %}
+
+{% block scripts %}
+  {% if has_data %}
+    <script>portalCharts.enrollment();</script>
+  {% endif %}
+{% endblock %}

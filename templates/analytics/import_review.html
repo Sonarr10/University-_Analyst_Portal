@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}Review Import · University Analytics{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <div>
+      <span class="technical-label">DATA QUALITY / {{ batch.dataset_type|upper }}</span>
+      <h1>Review import</h1>
+      <p>{{ batch.filename }} · uploaded {{ batch.uploaded_at|date:'M j, Y H:i' }}</p>
+    </div>
+    {% if not batch.imported_at and batch.summary.valid_rows %}
+      <form method="post" action="{% url 'import_confirm' batch.pk %}">
+        {% csrf_token %}
+        <button class="btn btn-primary"><i class="bi bi-database-check"></i> Import {{ batch.summary.valid_rows }} valid rows</button>
+      </form>
+    {% endif %}
+  </div>
+
+  {% if batch.imported_at %}
+    <div class="alert alert-success">
+      <i class="bi bi-check-circle me-2"></i>Imported {{ batch.imported_at|date:'M j, Y H:i' }}. Rejected rows were not imported.
+    </div>
+  {% endif %}
+
+  <div class="kpi-grid mb-4">
+    <div class="kpi-card"><span>TOTAL ROWS</span><strong>{{ batch.summary.total_rows }}</strong></div>
+    <div class="kpi-card"><span>VALID ROWS</span><strong>{{ batch.summary.valid_rows }}</strong></div>
+    <div class="kpi-card"><span>DUPLICATES</span><strong>{{ batch.summary.duplicate_rows }}</strong></div>
+    <div class="kpi-card"><span>MISSING VALUE ROWS</span><strong>{{ batch.summary.missing_value_rows }}</strong></div>
+    <div class="kpi-card"><span>INVALID REFERENCES</span><strong>{{ batch.summary.invalid_references }}</strong></div>
+    <div class="kpi-card risk"><span>REJECTED ROWS</span><strong>{{ batch.summary.rejected_rows }}</strong></div>
+  </div>
+
+  {% if batch.dataset_type == 'enrollment' %}
+    <div class="dashboard-card mb-4">
+      <h2 class="section-title">Enrollment validation detail</h2>
+      <div class="row text-center">
+        <div class="col"><span class="technical-label">INVALID DEPARTMENT</span><div class="metric-small">{{ batch.summary.invalid_department_rows }}</div></div>
+        <div class="col"><span class="technical-label">INVALID MAJOR</span><div class="metric-small">{{ batch.summary.invalid_major_rows }}</div></div>
+        <div class="col"><span class="technical-label">INVALID SHIFT</span><div class="metric-small">{{ batch.summary.invalid_shift_rows }}</div></div>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="dashboard-card p-0 overflow-hidden">
+    <div class="card-heading">
+      <div><span class="technical-label">REJECTED / ROW ISSUES</span><h2>Validation issues</h2></div>
+      <span class="badge status-critical">{{ batch.summary.rejected_rows }} rejected</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table data-table mb-0">
+        <thead><tr><th>Excel row</th><th>Issues</th><th>Submitted data</th></tr></thead>
+        <tbody>
+          {% for issue in batch.issues %}
+            <tr>
+              <td class="technical-label">ROW / {{ issue.row }}</td>
+              <td>{% for error in issue.errors %}<div class="text-danger">{{ error }}</div>{% endfor %}</td>
+              <td><code>{{ issue.data }}</code></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="3" class="table-empty"><i class="bi bi-check-circle text-success"></i> No data quality issues found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <a class="btn btn-outline-secondary mt-3" href="{% url 'upload_data' %}">Back to uploads</a>
+{% endblock %}

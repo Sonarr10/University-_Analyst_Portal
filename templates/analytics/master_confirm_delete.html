@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} · University Analytics{% endblock %}
+
+{% block content %}
+  <div class="dashboard-card form-card">
+    <span class="technical-label">CONFIRM / DELETE</span>
+    <h1 class="h3 mt-2">{{ title }}</h1>
+    <p>Delete <strong>{{ object }}</strong>? This may be blocked if analytics data depends on it.</p>
+    <form method="post">
+      {% csrf_token %}
+      <button class="btn btn-danger">Delete</button>
+      <a class="btn btn-outline-secondary" href="{{ list_url }}">Cancel</a>
+    </form>
+  </div>
+{% endblock %}

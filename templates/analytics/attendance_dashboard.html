@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% load analytics_tags %}
+
+{% block title %}Attendance · University Analytics{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <div>
+      <span class="technical-label">ANALYSIS / ATTENDANCE</span>
+      <h1>Attendance Analytics</h1>
+      <p>Who is at risk based on attendance percentage, not a fixed absence count?</p>
+    </div>
+    <a class="btn btn-primary" href="{% url 'upload_data' %}">Upload attendance</a>
+  </div>
+
+  {% if not has_data %}
+    <div class="dashboard-card empty-state">
+      <div class="empty-icon"><i class="bi bi-calendar-check"></i></div>
+      <h2>No attendance data</h2>
+      <p>Upload a validated attendance workbook after students and subjects are configured.</p>
+      <a class="btn btn-primary" href="{% url 'upload_data' %}">Upload attendance</a>
+    </div>
+  {% else %}
+    <div class="kpi-grid mb-4">
+      <div class="kpi-card"><span>AVG ATTENDANCE</span><strong>{{ average }}%</strong></div>
+      <div class="kpi-card"><span>GOOD</span><strong>{{ statuses|get_item:'Good' }}</strong></div>
+      <div class="kpi-card"><span>WARNING</span><strong>{{ statuses|get_item:'Warning' }}</strong></div>
+      <div class="kpi-card risk"><span>HIGH RISK</span><strong>{{ statuses|get_item:'High Risk' }}</strong></div>
+      <div class="kpi-card risk"><span>CRITICAL</span><strong>{{ statuses|get_item:'Critical' }}</strong></div>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-lg-7"><div class="dashboard-card chart-card"><h3>Average Attendance by Subject</h3><canvas id="attendanceSubjectChart"></canvas></div></div>
+      <div class="col-lg-5"><div class="dashboard-card chart-card"><h3>Attendance Status</h3><canvas id="attendanceStatusChart"></canvas></div></div>
+      <div class="col-12">
+        <div class="dashboard-card chart-card">
+          <h3>Attendance vs Score</h3>
+          <p class="card-note">Matched records show whether lower attendance tends to align with lower scores.</p>
+          <canvas id="attendanceScatterChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="dashboard-card p-0 overflow-hidden mt-4">
+      <div class="card-heading">
+        <div><span class="technical-label">ACTION / FOLLOW-UP</span><h2>Low attendance records</h2></div>
+      </div>
+      <div class="table-responsive">
+        <table class="table data-table mb-0">
+          <thead><tr><th>Student</th><th>Subject</th><th>Attendance</th><th>Absences</th><th>Status</th></tr></thead>
+          <tbody>
+            {% for record in low_attendance %}
+              <tr>
+                <td>{{ record.student.student_id }} · {{ record.student.student_name }}</td>
+                <td>{{ record.subject.name }}</td>
+                <td>{{ record.attendance_percentage }}%</td>
+                <td>{{ record.absent_count }} / {{ record.total_sessions }}</td>
+                <td>
+                  <span class="badge {% if record.status == 'Critical' %}status-critical{% else %}status-warning{% endif %}">{{ record.status }}</span>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {{ subject_chart|json_script:'attendance-subject-data' }}
+    {{ status_chart|json_script:'attendance-status-data' }}
+    {{ scatter|json_script:'attendance-scatter-data' }}
+  {% endif %}
+{% endblock %}
+
+{% block scripts %}
+  {% if has_data %}
+    <script>portalCharts.attendance();</script>
+  {% endif %}
+{% endblock %}
