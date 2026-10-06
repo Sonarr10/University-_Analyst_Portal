@@ -52,3 +52,9 @@
 .availability-item p{margin:0;color:var(--ink);font-size:13px}
 .availability-item small{color:var(--muted);font-size:12px;line-height:1.5}
 .availability-item .text-warning{color:var(--warn)!important}
+
+/* Filter controls and insight drill-downs stay readable on narrow screens. */
+.analysis-filters .form-select{min-width:0}
+.insight-preview-row{flex-wrap:wrap}
+.insight-preview-row>span:nth-child(2){flex:1;min-width:150px}
+@media(max-width:575px){.insight-preview-row>a{margin-left:40px!important}}

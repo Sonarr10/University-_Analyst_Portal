@@ -9,15 +9,20 @@
       <h1>Academic Performance</h1>
       <p>Which subjects and students need academic support?</p>
     </div>
-    <a class="btn btn-primary" href="{% url 'upload_data' %}">Upload performance</a>
+    <div class="d-flex gap-2 flex-wrap">
+      <a class="btn btn-outline-primary" href="{% url 'export_analytics' 'performance' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">Export Excel Report</a>
+      <a class="btn btn-primary" href="{% url 'upload_data' %}?dataset_type=performance">Upload performance</a>
+    </div>
   </div>
+
+  {% include 'analytics/partials/analysis_filters.html' %}
 
   {% if not has_data %}
     <div class="dashboard-card empty-state">
       <div class="empty-icon"><i class="bi bi-bar-chart"></i></div>
-      <h2>No performance data</h2>
-      <p>Upload a validated performance workbook after students and subjects are configured.</p>
-      <a class="btn btn-primary" href="{% url 'upload_data' %}">Upload performance</a>
+      <h2>{% if has_any_data %}No matching performance data{% else %}No performance data yet{% endif %}</h2>
+      <p>{% if has_any_data %}Try another department, major, or shift.{% else %}Upload Performance Excel after students and subjects are configured.{% endif %}</p>
+      {% if not has_any_data %}<a class="btn btn-primary" href="{% url 'upload_data' %}?dataset_type=performance">Upload performance</a>{% endif %}
     </div>
   {% else %}
     <div class="kpi-grid mb-4">
@@ -56,6 +61,11 @@
           </tbody>
         </table>
       </div>
+    </div>
+
+    <div class="dashboard-card mt-4">
+      <h2 class="section-title mb-2">Analysis rules</h2>
+      <p class="card-note mb-0">A score of 50 or higher passes. Average Grade Point is simplified because subject credits are not recorded; it is not an official GPA.</p>
     </div>
 
     {{ subject_chart|json_script:'subject-data' }}

@@ -10,7 +10,11 @@
       <h1>{{ title }}s</h1>
       <p>Maintain trusted reference data used by Excel validation and analysis.</p>
     </div>
-    <a class="btn btn-primary" href="{{ create_url }}"><i class="bi bi-plus-lg"></i> Add {{ title }}</a>
+    <div class="d-flex gap-2 flex-wrap">
+      <a class="btn btn-primary" href="{{ create_url }}"><i class="bi bi-plus-lg"></i> Add {{ title }}</a>
+      <a class="btn btn-outline-primary" href="{% url 'setup_import' kind %}"><i class="bi bi-file-earmark-arrow-up"></i> Import Excel</a>
+      <a class="btn btn-outline-secondary" href="{% url 'setup_template' kind %}"><i class="bi bi-download"></i> Download Template</a>
+    </div>
   </div>
   <div class="dashboard-card p-0 overflow-hidden">
     <div class="table-responsive">

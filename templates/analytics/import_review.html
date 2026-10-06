@@ -24,13 +24,16 @@
   {% endif %}
 
   <div class="kpi-grid mb-4">
-    <div class="kpi-card"><span>TOTAL ROWS</span><strong>{{ batch.summary.total_rows }}</strong></div>
-    <div class="kpi-card"><span>VALID ROWS</span><strong>{{ batch.summary.valid_rows }}</strong></div>
-    <div class="kpi-card"><span>DUPLICATES</span><strong>{{ batch.summary.duplicate_rows }}</strong></div>
-    <div class="kpi-card"><span>MISSING VALUE ROWS</span><strong>{{ batch.summary.missing_value_rows }}</strong></div>
-    <div class="kpi-card"><span>INVALID REFERENCES</span><strong>{{ batch.summary.invalid_references }}</strong></div>
-    <div class="kpi-card risk"><span>REJECTED ROWS</span><strong>{{ batch.summary.rejected_rows }}</strong></div>
+    <div class="kpi-card"><span>DATA QUALITY</span><strong>{% if quality.data_quality_percentage != None %}{{ quality.data_quality_percentage }}%{% else %}No Data{% endif %}</strong><small>Valid rows ÷ total rows</small></div>
+    <div class="kpi-card"><span>TOTAL ROWS</span><strong>{{ quality.total_rows }}</strong></div>
+    <div class="kpi-card"><span>VALID ROWS</span><strong>{{ quality.valid_rows }}</strong></div>
+    <div class="kpi-card"><span>DUPLICATES</span><strong>{{ quality.duplicate_rows|default_if_none:'—' }}</strong></div>
+    <div class="kpi-card"><span>MISSING VALUE ROWS</span><strong>{{ quality.missing_value_rows|default_if_none:'—' }}</strong></div>
+    <div class="kpi-card"><span>INVALID REFERENCES</span><strong>{{ quality.invalid_references|default_if_none:'—' }}</strong></div>
+    <div class="kpi-card"><span>INVALID NUMERIC ROWS</span><strong>{{ quality.invalid_numeric_rows|default_if_none:'—' }}</strong></div>
+    <div class="kpi-card risk"><span>REJECTED ROWS</span><strong>{{ quality.rejected_rows }}</strong></div>
   </div>
+  {% if quality.invalid_numeric_rows == None %}<p class="card-note">— means this count was not tracked when the batch was validated.</p>{% endif %}
 
   {% if batch.dataset_type == 'enrollment' %}
     <div class="dashboard-card mb-4">
@@ -65,5 +68,9 @@
       </table>
     </div>
   </div>
-  <a class="btn btn-outline-secondary mt-3" href="{% url 'upload_data' %}">Back to uploads</a>
+  {% if batch.dataset_type == 'department' or batch.dataset_type == 'major' or batch.dataset_type == 'subject' or batch.dataset_type == 'teacher' or batch.dataset_type == 'room' %}
+    <a class="btn btn-outline-secondary mt-3" href="{% url batch.dataset_type|add:'_list' %}">Back to {{ batch.get_dataset_type_display }}</a>
+  {% else %}
+    <a class="btn btn-outline-secondary mt-3" href="{% url 'upload_data' %}">Back to uploads</a>
+  {% endif %}
 {% endblock %}

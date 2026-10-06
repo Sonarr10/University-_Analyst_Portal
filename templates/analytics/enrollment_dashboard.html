@@ -9,15 +9,24 @@
       <h1>Enrollment &amp; Capacity</h1>
       <p>How many sections are needed, and do shared teachers and rooms support them?</p>
     </div>
-    <a class="btn btn-primary" href="{% url 'upload_data' %}">Upload enrollment</a>
+    <div class="d-flex gap-2 flex-wrap">
+      <a class="btn btn-outline-primary" href="{% url 'export_analytics' 'enrollment' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">Export Excel Report</a>
+      <a class="btn btn-primary" href="{% url 'upload_data' %}?dataset_type=enrollment">Upload enrollment</a>
+    </div>
   </div>
 
+  {% include 'analytics/partials/analysis_filters.html' %}
+
   {% if not has_data %}
-    <div class="dashboard-card text-secondary mb-4">No enrollment data yet.</div>
-    {% include 'analytics/partials/empty_state.html' %}
+    {% if has_any_data %}
+      <div class="dashboard-card text-secondary mb-4">No enrollment data matches these filters. Try another department, major, or shift.</div>
+    {% else %}
+      <div class="dashboard-card text-secondary mb-4">No enrollment data yet. Upload Enrollment Excel to begin capacity analysis.</div>
+      {% include 'analytics/partials/empty_state.html' %}
+    {% endif %}
   {% else %}
     <div class="kpi-grid mb-4">
-      <div class="kpi-card"><span>STUDENTS</span><strong>{{ kpis.students }}</strong></div>
+      <div class="kpi-card"><span>STUDENTS</span><strong>{{ filtered_students }}</strong></div>
       <div class="kpi-card"><span>REQUIRED SECTIONS</span><strong>{{ total_required }}</strong><small>Sum of major + shift groups</small></div>
       <div class="kpi-card"><span>SHARED ROOMS</span><strong>{{ kpis.rooms }}</strong><small>Active classrooms across all shifts</small></div>
       <div class="kpi-card"><span>TEACHERS</span><strong>{{ kpis.teachers }}</strong><small>{% if teacher_shortage_pools %}<span class="capacity-alert">{{ teacher_shortage_pools|length }} department/shift groups need teachers</span>{% else %}Teacher capacity sufficient{% endif %}</small></div>
@@ -69,6 +78,11 @@
           </tbody>
         </table>
       </div>
+    </div>
+
+    <div class="dashboard-card mt-4">
+      <h2 class="section-title mb-2">Analysis rules</h2>
+      <p class="card-note mb-0">Maximum 25 students per calculated section. Each active teacher supports one section in each selected shift. Active rooms are shared across majors by shift; no room or teacher is assigned here.</p>
     </div>
 
     <div class="row g-4 mt-1">

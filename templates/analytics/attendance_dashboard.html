@@ -10,15 +10,20 @@
       <h1>Attendance Analytics</h1>
       <p>Who is at risk based on attendance percentage, not a fixed absence count?</p>
     </div>
-    <a class="btn btn-primary" href="{% url 'upload_data' %}">Upload attendance</a>
+    <div class="d-flex gap-2 flex-wrap">
+      <a class="btn btn-outline-primary" href="{% url 'export_analytics' 'attendance' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">Export Excel Report</a>
+      <a class="btn btn-primary" href="{% url 'upload_data' %}?dataset_type=attendance">Upload attendance</a>
+    </div>
   </div>
+
+  {% include 'analytics/partials/analysis_filters.html' %}
 
   {% if not has_data %}
     <div class="dashboard-card empty-state">
       <div class="empty-icon"><i class="bi bi-calendar-check"></i></div>
-      <h2>No attendance data</h2>
-      <p>Upload a validated attendance workbook after students and subjects are configured.</p>
-      <a class="btn btn-primary" href="{% url 'upload_data' %}">Upload attendance</a>
+      <h2>{% if has_any_data %}No matching attendance data{% else %}No attendance data yet{% endif %}</h2>
+      <p>{% if has_any_data %}Try another department, major, or shift.{% else %}Upload Attendance Excel after students and subjects are configured.{% endif %}</p>
+      {% if not has_any_data %}<a class="btn btn-primary" href="{% url 'upload_data' %}?dataset_type=attendance">Upload attendance</a>{% endif %}
     </div>
   {% else %}
     <div class="kpi-grid mb-4">
@@ -33,11 +38,15 @@
       <div class="col-lg-7"><div class="dashboard-card chart-card"><h3>Average Attendance by Subject</h3><canvas id="attendanceSubjectChart"></canvas></div></div>
       <div class="col-lg-5"><div class="dashboard-card chart-card"><h3>Attendance Status</h3><canvas id="attendanceStatusChart"></canvas></div></div>
       <div class="col-12">
-        <div class="dashboard-card chart-card">
-          <h3>Attendance vs Score</h3>
-          <p class="card-note">Matched records show whether lower attendance tends to align with lower scores.</p>
-          <canvas id="attendanceScatterChart"></canvas>
-        </div>
+        {% if scatter %}
+          <div class="dashboard-card chart-card">
+            <h3>Attendance vs Score</h3>
+            <p class="card-note">Matched records show whether lower attendance tends to align with lower scores.</p>
+            <canvas id="attendanceScatterChart"></canvas>
+          </div>
+        {% else %}
+          <div class="dashboard-card text-secondary">No matched Attendance and Performance records yet. Upload matching Performance Excel to see this relationship.</div>
+        {% endif %}
       </div>
     </div>
 
@@ -63,6 +72,11 @@
           </tbody>
         </table>
       </div>
+    </div>
+
+    <div class="dashboard-card mt-4">
+      <h2 class="section-title mb-2">Analysis rules</h2>
+      <p class="card-note mb-0">Attendance is based on attended sessions ÷ total sessions. Good: ≥85%; Warning: 75–84.99%; High Risk: 60–74.99%; Critical: below 60%.</p>
     </div>
 
     {{ subject_chart|json_script:'attendance-subject-data' }}

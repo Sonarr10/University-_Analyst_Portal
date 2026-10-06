@@ -68,11 +68,13 @@ python manage.py test
 
 ### Generate demo files
 
-To generate the four classroom demo workbooks without changing the database:
+To generate eight clean and eight intentionally messy workbooks without changing the database:
 
 ```bash
 python manage.py generate_demo_files
 ```
+
+This creates `demo_data/Good Data/`, `demo_data/Messy Data/`, and `demo_data/README.md`. Use `--force` only when you intentionally want to replace the 16 named workbooks. The obsolete root-level `demo_*.xlsx` files are removed; no combined master workbook is generated.
 
 The older `seed_demo --students 220` command still exists, but it writes records directly into the database. Use the new workbook flow below when demonstrating validation and import.
 
@@ -81,25 +83,36 @@ The older `seed_demo --students 220` command still exists, but it writes records
 Start from an empty database. If this local database already contains records, make a backup and run `python manage.py flush` only if you intend to remove **all** records, including accounts; then register again. Do not run `seed_demo` before this walkthrough.
 
 1. Register or sign in. Show the empty dashboard: zero students, teachers, and rooms, with “No Data” score and attendance cards.
-2. Open **Departments → Add Department** and create `CSE` / `Computer Science and Engineering`. Open **Majors → Add Major** and create `SE` / `Software Engineering` under `CSE`.
-3. Download **Master Data Demo** from **Upload Data**, then open **Import Master Data** in the sidebar. Upload `demo_master_data.xlsx`, review the five-sheet summary, and click **Import valid rows**. The existing `CSE` and `SE` records update instead of duplicating.
-4. Download and upload `demo_enrollment.xlsx` as **Enrollment**. Show its cleaning summary, confirm the import, then open **Enrollment & Capacity**. Point out 70 Software Engineering Morning students, three required sections, the shared CSE Morning teacher shortage, shift-wide shared-room demand, and supported-seat recommendations.
-5. Upload and confirm `demo_performance.xlsx` as **Academic Performance**. Open **Performance** to show the weak Database Systems average and failure rate.
-6. Upload and confirm `demo_attendance.xlsx` as **Attendance**. Open **Attendance** to show risk groups and the attendance-versus-score scatter chart.
-7. Return to **Dashboard** and walk through the management insights. Each number comes from the imported database records.
+2. Open **Departments → Add Department** and create `SCI` / `Science and Technology`. Open **Majors → Add Major** and create `CSE` / `Computer Science and Engineering` under `SCI`.
+3. Open each setup list in order—**Departments**, **Majors**, **Subjects**, **Teachers**, **Rooms**—and import its matching workbook from `demo_data/Good Data/`. Review each preview and confirm valid rows. The manually created `SCI` and `CSE` rows are flagged as existing and skipped, never overwritten.
+4. Upload `demo_data/Good Data/enrollment.xlsx` as **Enrollment**. Show its cleaning summary, confirm the import, then open **Enrollment & Capacity**. Point out 70 Computer Science and Engineering Morning students, three required sections, the shared Science and Technology Morning teacher shortage, shift-wide shared-room demand, and the supported Afternoon alternative.
+5. Upload and confirm `demo_data/Good Data/performance.xlsx` as **Academic Performance**. Open **Performance** to show the weak Database Systems average and failure rate.
+6. Upload and confirm `demo_data/Good Data/attendance.xlsx` as **Attendance**. Open **Attendance** to show risk groups and the attendance-versus-score scatter chart.
+7. Return to **Dashboard** and walk through the management insights. Each number comes from the imported database records. Use **View details** to open the relevant analysis page.
 
-All four workbooks are downloadable from the Upload Data page. `generate_demo_files` also writes physical copies to `demo_data/`:
+On each analytics page, the Department, Major, and Shift filters work together and carry through to **Export Excel Report**. Each module workbook has a styled Overview, detail and insight sheets, and native Excel charts linked to numeric cells. Filtered enrollment reports label teacher supply as department-wide and shared-room supply as university-wide by shift; those resources are not counted independently for each major. The dashboard's “Last successful import” time comes from a confirmed import, not the current clock.
 
-| File | Contents |
-|---|---|
-| `demo_master_data.xlsx` | Departments, Majors, Subjects, Teachers, Rooms |
-| `demo_enrollment.xlsx` | 185 synthetic students in six major/shift groups |
-| `demo_performance.xlsx` | 397 synthetic student/subject scores |
-| `demo_attendance.xlsx` | 397 synthetic student/subject attendance records |
+### Consolidated analytics workbook
 
-The master workbook requires these headers: Departments (`code`, `name`); Majors (`code`, `name`, `department_code`); Subjects (`code`, `name`, `major_code`); Teachers (`name`, `email`, `department_code`, `available_shifts`); Rooms (`code`, `capacity`, `active`). Teacher shifts are comma-separated, for example `Morning,Afternoon`. Email may be blank; the other teacher columns are required. A legacy `max_sections` column is accepted but ignored. Invalid rows are shown with reasons and excluded from import. Existing records match by code, or teacher email/name and department, and are updated on confirmation.
+Use **Export Analytics Excel** on the main Dashboard to download a current, university-wide `University_Analytics_Report_YYYY-MM-DD.xlsx` snapshot. It contains Dashboard, Enrollment, Performance, Attendance, and Capacity sheets. The Dashboard has native Excel charts for enrollment by department/major/shift, required sections by major/shift, average score by subject, pass/fail, and attendance risk. A hidden `_ChartData` sheet holds the real summarized cells those charts reference; unhide it to inspect or edit the chart source values in Excel. Charts for missing datasets are omitted cleanly. This consolidated report is separate from the existing filtered exports on individual analytics pages.
 
-The synthetic data intentionally produces: Software Engineering Morning 70 → 3 sections; combined CSE Morning demand across Software Engineering and Cybersecurity is 5 sections versus 2 active Morning teachers, a shortage of 3. Morning needs 6 shared rooms while 4 are active, so this shift exceeds room capacity. Software Engineering Afternoon has a teacher shortage, Business Administration Morning has a room-capacity limit, Business Administration Afternoon is near capacity, and English Evening has supported capacity. Database Systems is the weakest subject, and 12 students have at least one Critical attendance record. The precise results come from imported rows, not dashboard constants.
+The generator writes separate Department, Major, Subject, Teacher, Room, Enrollment, Performance, and Attendance workbooks under both `Good Data/` and `Messy Data/`. The clean Enrollment workbook has 227 fictional students; clean Performance and Attendance each have 451 student/subject records. See [demo_data/README.md](demo_data/README.md) for the exact filenames, import order, and validation-demo guidance.
+
+The synthetic setup hierarchy is: **Science and Technology** → Computer Science and Engineering, Business Information Technology, Data Science; **Languages** → English, Chinese Language; **Business** → Business Administration, Marketing. Setup templates include this hierarchy. Student IDs are unique, and names are generated deterministically from diverse Cambodian-style name combinations. Performance and Attendance files reference the same student IDs, so imported records and reports resolve to the Enrollment names.
+
+Each setup list has **Add**, **Import Excel**, and **Download Template**. Individual import headers are: Department (`code`, `name`); Major (`code`, `name`, `department_code`); Subject (`code`, `name`, `major_code`); Teacher (`name`, `email`, `department_code`, `available_shifts`, `subjects_can_teach`, `active`); Room (`code`, `capacity`, `active`). Teacher shifts and subjects are comma-separated, for example `Morning,Afternoon` and `CSE101,CSE102`; at most three subjects are allowed, all in the selected department. Email and subject list may be blank. Import relationships must already exist in the database, so use the listed order. Duplicate or existing rows are reported and skipped; imports never overwrite records. The preview shows row-level reasons before confirmation.
+
+### Module report workbooks
+
+| Page | Workbook sheets | Native Excel charts |
+|---|---|---|
+| Enrollment & Capacity | Overview, Enrollment Data, Major & Shift Analysis, Capacity Analysis, Insights | Enrollment by department/major/shift, required sections by major/shift, department-shift demand vs active teachers, university-wide shared room demand vs active rooms |
+| Performance | Overview, Student Performance, Subject Analysis, Grade Distribution, Insights | Average score by subject/major, pass vs fail, grade distribution, pass rate by subject |
+| Attendance | Overview, Attendance Records, Subject Attendance, Risk Analysis, Attendance vs Performance, Insights | Risk distribution, attendance by subject/major, absences by subject, matched attendance-vs-score scatter |
+
+Each workbook also contains a hidden `_ChartData` sheet with numeric source cells. Unhide it to inspect or edit chart source values in Excel. Missing datasets omit unsupported charts. Reports are read-only database snapshots and do not change imported records.
+
+The synthetic data intentionally produces: Computer Science and Engineering Morning 70 → 3 sections; combined Science and Technology Morning demand across Computer Science and Engineering and Business Information Technology is 5 sections versus 2 active Morning teachers, a shortage of 3. Morning needs 6 shared rooms while 4 are active, so this shift exceeds room capacity. Computer Science and Engineering Afternoon has 28 supported seats available as an alternative, Business Administration Morning has a room-capacity limit, Business Administration Afternoon is near capacity, and English Evening has supported capacity. Database Systems is the weakest subject, and 15 students have at least one Critical attendance record. The precise results come from imported rows, not dashboard constants.
 
 ## Dependencies
 
@@ -121,13 +134,17 @@ Only `.xlsx` files up to 10 MB are accepted. Downloadable starter templates are 
 | Performance | `student_id`, `subject_code`, `score` | — |
 | Attendance | `student_id`, `subject_code`, `total_sessions`, `absent_count` | — |
 
-Enrollment references must already exist in setup data. Performance and attendance require imported students and configured subjects. Every batch shows valid, duplicate, missing, invalid-reference, and rejected counts before confirmation. Invalid rows remain visible in the issue table and are never silently imported.
+Enrollment references must already exist in setup data. Performance and attendance require imported students and configured subjects. Every batch shows total, valid, rejected, duplicate, missing, invalid-reference, and invalid-numeric row counts plus the valid-row percentage before confirmation. Invalid rows remain visible in the issue table and are never silently imported.
 
 ## Project structure
 
 ```text
 university_portal/       Django settings and root URLs
 analytics/               Models, forms, views, analytics/import services
+  excel_export.py         Consolidated, native-chart Excel report builder
+  module_reports.py       Three filtered, native-chart module report builders
+  setup_import.py         Individual setup templates, validation, and import
+  demo_names.py           Deterministic fictional Cambodian-style student names
   management/commands/   Demo workbook generator and legacy seed command
   migrations/            Database schema
   templatetags/           Presentation helpers
@@ -158,15 +175,14 @@ requirements.txt          Python dependencies
 - Teacher capacity is a department/shift aggregate; it is not a timetable or optimization engine.
 - Shared spare teacher and room capacity is a what-if scenario for each major, not a reservation; simultaneous recommendations are not additive. Room size is not used in the Version 1 shared-room count, which follows the university's active-room rule.
 - Legacy `max_sections` and `assigned_sections` database columns are retained to avoid deleting existing data, but are hidden from the teacher form/list and ignored by analytics.
-- The refreshed `demo_data/demo_master_data.xlsx` and downloadable workbook use the shift-based teacher format. Older master workbooks with a `max_sections` column remain importable; that column is ignored.
-- Re-importing a valid student or student/subject record updates the existing record.
+- The old combined master-data importer and `demo_master_data.xlsx` output have been retired. Use the five individual setup workbooks.
+- Exact matching re-imports are idempotent; conflicting existing student IDs and student/subject records are rejected during validation rather than silently overwritten.
 - Chart and UI libraries require internet access unless their CDN assets are vendored locally.
 - SQLite and the development secret/debug settings are suitable for coursework/local use, not production deployment.
 
 ## Future improvements
 
 - Add academic-period selection and historical trend analysis without student lifecycle automation.
-- Add explicit section-to-teacher assignments for more precise workload utilization.
-- Add downloadable issue reports and import rollback/audit tooling.
+- Add richer validation issue downloads and import audit/rollback tooling while preserving the aggregate capacity model.
 - Vendor front-end assets and add browser-based accessibility/visual regression tests.
 - Move secrets to environment variables and use a production database/server for deployment.

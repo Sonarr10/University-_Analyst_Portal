@@ -125,7 +125,8 @@ class Attendance(models.Model):
 
 
 class ImportBatch(models.Model):
-    DATASET_CHOICES = [("master", "Master Data"), ("enrollment", "Enrollment"), ("performance", "Academic Performance"), ("attendance", "Attendance")]
+    DATASET_CHOICES = [("master", "Master Data"), ("enrollment", "Enrollment"), ("performance", "Academic Performance"), ("attendance", "Attendance"),
+                       ("department", "Departments"), ("major", "Majors"), ("subject", "Subjects"), ("teacher", "Teachers"), ("room", "Rooms")]
     dataset_type = models.CharField(max_length=20, choices=DATASET_CHOICES)
     filename = models.CharField(max_length=255)
     uploaded_by = models.ForeignKey(User, on_delete=models.PROTECT)

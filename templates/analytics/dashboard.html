@@ -8,8 +8,12 @@
       <span class="technical-label">UNIVERSITY / OVERVIEW</span>
       <h1>Decision Support Dashboard</h1>
       <p>Enrollment, academic performance, and attendance in one evidence-based view.</p>
+      {% if last_imported_at %}<small class="text-secondary">Last successful import: {{ last_imported_at|date:'d M Y, H:i' }}</small>{% endif %}
     </div>
-    <a class="btn btn-primary" href="{% url 'upload_data' %}"><i class="bi bi-cloud-arrow-up"></i> Upload data</a>
+    <div class="d-flex gap-2 flex-wrap">
+      <a class="btn btn-outline-primary" href="{% url 'export_university_analytics' %}"><i class="bi bi-file-earmark-spreadsheet"></i> Export Analytics Excel</a>
+      <a class="btn btn-primary" href="{% url 'upload_data' %}"><i class="bi bi-cloud-arrow-up"></i> Upload data</a>
+    </div>
   </div>
 
   <div class="kpi-grid">
@@ -27,7 +31,7 @@
     <div class="kpi-card"><div class="kpi-heading"><span>ROOMS</span><i class="bi bi-building" aria-hidden="true"></i></div><strong>{{ kpis.rooms }}</strong></div>
     <div class="kpi-card"><span>DEPARTMENTS</span><strong>{{ kpis.departments }}</strong></div>
     <div class="kpi-card"><span>MAJORS</span><strong>{{ kpis.majors }}</strong></div>
-    <div class="kpi-card"><span>AVERAGE SCORE</span><strong>{{ kpis.average_score|default:'No Data' }}</strong></div>
+    <div class="kpi-card"><span>AVERAGE SCORE</span><strong>{% if kpis.average_score != None %}{{ kpis.average_score }}{% else %}No Data{% endif %}</strong></div>
     <div class="kpi-card">
       <span>PASS RATE</span>
       <strong>{% if kpis.pass_rate != None %}{{ kpis.pass_rate }}%{% else %}No Data{% endif %}</strong>
@@ -81,16 +85,26 @@
         <div class="col-lg-5"><div class="dashboard-card chart-card"><h3>Students by Shift</h3><canvas id="shiftChart"></canvas></div></div>
         <div class="col-lg-7"><div class="dashboard-card chart-card"><h3>Required Sections by Major</h3><canvas id="requiredMajorChart"></canvas></div></div>
         <div class="col-12"><div class="dashboard-card chart-card"><h3>Required Sections vs Available Teachers</h3><p class="card-note">Department and shift totals; each active teacher counts once in each selected shift.</p><canvas id="capacityChart"></canvas></div></div>
-        <div class="col-lg-7"><div class="dashboard-card chart-card"><h3>Average Score by Subject</h3><canvas id="scoreChart"></canvas></div></div>
-        <div class="col-lg-5"><div class="dashboard-card chart-card"><h3>Pass vs Fail</h3><canvas id="passChart"></canvas></div></div>
-        <div class="col-lg-5"><div class="dashboard-card chart-card"><h3>Attendance Risk Distribution</h3><canvas id="attendanceChart"></canvas></div></div>
-        <div class="col-lg-7">
-          <div class="dashboard-card chart-card">
-            <h3>Attendance vs Score</h3>
-            <p class="card-note">Relationship analysis for matched student/subject records.</p>
-            <canvas id="scatterChart"></canvas>
+        {% if has_performance %}
+          <div class="col-lg-7"><div class="dashboard-card chart-card"><h3>Average Score by Subject</h3><canvas id="scoreChart"></canvas></div></div>
+          <div class="col-lg-5"><div class="dashboard-card chart-card"><h3>Pass vs Fail</h3><canvas id="passChart"></canvas></div></div>
+        {% else %}
+          <div class="col-12"><div class="dashboard-card text-secondary">No performance data yet. <a href="{% url 'upload_data' %}?dataset_type=performance">Upload Performance Excel</a> to see score charts.</div></div>
+        {% endif %}
+        {% if has_attendance %}
+          <div class="col-lg-5"><div class="dashboard-card chart-card"><h3>Attendance Risk Distribution</h3><canvas id="attendanceChart"></canvas></div></div>
+        {% else %}
+          <div class="col-12"><div class="dashboard-card text-secondary">No attendance data yet. <a href="{% url 'upload_data' %}?dataset_type=attendance">Upload Attendance Excel</a> to see risk analysis.</div></div>
+        {% endif %}
+        {% if scatter %}
+          <div class="col-lg-7">
+            <div class="dashboard-card chart-card">
+              <h3>Attendance vs Score</h3>
+              <p class="card-note">Relationship analysis for matched student/subject records.</p>
+              <canvas id="scatterChart"></canvas>
+            </div>
           </div>
-        </div>
+        {% endif %}
       </div>
     </section>
 
@@ -107,6 +121,7 @@
           <div class="insight-preview-row">
             <span class="insight-preview-icon insight-preview-icon-{{ insight.level }}" aria-hidden="true"><i class="bi {% if insight.level == 'danger' %}bi-exclamation-octagon{% elif insight.level == 'warning' %}bi-exclamation-triangle{% else %}bi-info-circle{% endif %}"></i></span>
             <span>{{ insight.summary }}</span>
+            {% if insight.url %}<a class="ms-auto text-nowrap small" href="{% url insight.url %}">View details <i class="bi bi-arrow-right" aria-hidden="true"></i></a>{% endif %}
           </div>
         {% empty %}
           <div class="insight-preview-row"><span class="insight-preview-icon insight-preview-icon-info" aria-hidden="true"><i class="bi bi-check-circle"></i></span><span>No critical issues detected.</span></div>

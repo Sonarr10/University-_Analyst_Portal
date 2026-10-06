@@ -4,6 +4,8 @@ from pathlib import Path
 from django.core.management.base import BaseCommand
 from openpyxl import Workbook
 
+from analytics.demo_names import cambodian_student_names
+from analytics.demo_workbooks import BASE_SCORES, MASTER_ROWS
 from analytics.models import Attendance, Department, Major, Performance, Room, Shift, Student, Subject, Teacher
 from analytics.services import attendance_status, grade_for
 
@@ -17,25 +19,20 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         rng = random.Random(options["seed"])
-        departments_spec = {
-            "CSE": ("Computer Science and Engineering", [("SE", "Software Engineering"), ("DS", "Data Science"), ("CY", "Cybersecurity")]),
-            "BUS": ("Business", [("ACC", "Accounting"), ("MKT", "Marketing")]),
-            "ENG": ("Engineering", [("CE", "Civil Engineering"), ("EE", "Electrical Engineering")]),
-        }
-        majors = []
-        for code, (name, major_specs) in departments_spec.items():
+        departments = {}
+        for code, name in MASTER_ROWS["Departments"][1:]:
             department, _ = Department.objects.update_or_create(code=code, defaults={"name": name})
-            for major_code, major_name in major_specs:
-                major, _ = Major.objects.update_or_create(code=major_code, defaults={"name": major_name, "department": department})
-                majors.append(major)
-        subjects = []
-        for major in majors:
-            for number, suffix in enumerate(["Foundations", "Data Applications"], 1):
-                subject, _ = Subject.objects.update_or_create(code=f"{major.code}{number}01", defaults={"name": f"{major.name} {suffix}", "major": major})
-                subjects.append(subject)
+            departments[code] = department
+        majors = []
+        for code, name, department_code in MASTER_ROWS["Majors"][1:]:
+            major, _ = Major.objects.update_or_create(code=code, defaults={"name": name, "department": departments[department_code]})
+            majors.append(major)
+        major_by_code = {major.code: major for major in majors}
+        for code, name, major_code in MASTER_ROWS["Subjects"][1:]:
+            Subject.objects.update_or_create(code=code, defaults={"name": name, "major": major_by_code[major_code]})
         for i in range(1, 11):
             Room.objects.update_or_create(code=f"R{i:02d}", defaults={"capacity": rng.choice([25, 30, 35]), "active": True})
-        for department in Department.objects.all():
+        for department in departments.values():
             department_subjects = Subject.objects.filter(major__department=department)
             for i in range(1, 5):
                 teacher, _ = Teacher.objects.update_or_create(name=f"{department.code} Demo Teacher {i}", defaults={
@@ -45,19 +42,20 @@ class Command(BaseCommand):
                 })
                 teacher.subjects_can_teach.set(department_subjects[:3])
         enrollment_rows, performance_rows, attendance_rows = [], [], []
-        weights = [5 if major.code == "SE" else 2 if major.department.code == "CSE" else 1 for major in majors]
+        weights = [5 if major.code == "CSE" else 2 if major.department.code == "SCI" else 1 for major in majors]
+        student_names = cambodian_student_names(options["students"])
         for i in range(1, options["students"] + 1):
             major = rng.choices(majors, weights=weights, k=1)[0]
             shift = rng.choices(Shift.values, weights=[6, 3, 1], k=1)[0]
             student, _ = Student.objects.update_or_create(student_id=f"DEMO{i:04d}", defaults={
-                "student_name": f"Synthetic Student {i:04d}", "department": major.department, "major": major,
+                "student_name": student_names[i - 1], "department": major.department, "major": major,
                 "shift": shift, "gender": rng.choice(["Female", "Male", "Prefer not to say"]),
             })
             enrollment_rows.append([student.student_id, student.student_name, major.department.code, major.code, shift, student.gender])
             for subject in rng.sample(list(major.subjects.all()), k=min(2, major.subjects.count())):
                 absent = min(20, max(0, int(rng.gauss(3, 3))))
                 attendance_pct = (20 - absent) / 20 * 100
-                base_score = 42 if subject.code == "SE201" else 67
+                base_score = BASE_SCORES.get(subject.code, 67)
                 score = max(0, min(100, round(base_score + (attendance_pct - 75) * .38 + rng.gauss(0, 10), 1)))
                 grade, point = grade_for(score)
                 Performance.objects.update_or_create(student=student, subject=subject, defaults={"score": score, "letter_grade": grade, "grade_point": point, "passed": score >= 50})

@@ -1,0 +1,49 @@
+<form class="dashboard-card analysis-filters mb-4" method="get">
+  <div class="row g-3 align-items-end">
+    <div class="col-sm-6 col-lg-3">
+      <label class="form-label technical-label" for="filter-department">DEPARTMENT</label>
+      <select class="form-select" id="filter-department" name="department">
+        <option value="">All departments</option>
+        {% for department in filter_departments %}
+          <option value="{{ department.pk }}"{% if filters.department == department.pk %} selected{% endif %}>{{ department.code }} · {{ department.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <label class="form-label technical-label" for="filter-major">MAJOR</label>
+      <select class="form-select" id="filter-major" name="major">
+        <option value="">All majors</option>
+        {% for major in filter_majors %}
+          <option value="{{ major.pk }}" data-department="{{ major.department_id }}"{% if filters.major == major.pk %} selected{% endif %}>{{ major.code }} · {{ major.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <label class="form-label technical-label" for="filter-shift">SHIFT</label>
+      <select class="form-select" id="filter-shift" name="shift">
+        <option value="">All shifts</option>
+        <option value="Morning"{% if filters.shift == 'Morning' %} selected{% endif %}>Morning</option>
+        <option value="Afternoon"{% if filters.shift == 'Afternoon' %} selected{% endif %}>Afternoon</option>
+        <option value="Evening"{% if filters.shift == 'Evening' %} selected{% endif %}>Evening</option>
+      </select>
+    </div>
+    <div class="col-sm-6 col-lg-3 d-flex gap-2">
+      <button class="btn btn-primary" type="submit">Apply</button>
+      {% if has_filters %}<a class="btn btn-outline-secondary" href="{{ request.path }}">Clear</a>{% endif %}
+    </div>
+  </div>
+</form>
+<script>
+  (() => {
+    const department = document.getElementById('filter-department');
+    const major = document.getElementById('filter-major');
+    const syncMajors = () => {
+      for (const option of major.options) {
+        if (option.value) option.disabled = Boolean(department.value && option.dataset.department !== department.value);
+      }
+      if (major.selectedOptions[0]?.disabled) major.value = '';
+    };
+    department.addEventListener('change', syncMajors);
+    syncMajors();
+  })();
+</script>

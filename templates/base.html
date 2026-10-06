@@ -38,7 +38,6 @@
             <i class="bi bi-calendar-check"></i> Attendance
           </a>
           <span class="nav-section">SETUP</span>
-          <a class="nav-link{% if request.resolver_match.url_name == 'import_master_data' %} active{% endif %}" href="{% url 'import_master_data' %}"{% if request.resolver_match.url_name == 'import_master_data' %} aria-current="page"{% endif %}>Import Master Data</a>
           <a class="nav-link{% if '/setup/departments/' in request.path %} active{% endif %}" href="{% url 'department_list' %}"{% if '/setup/departments/' in request.path %} aria-current="page"{% endif %}>Departments</a>
           <a class="nav-link{% if '/setup/majors/' in request.path %} active{% endif %}" href="{% url 'major_list' %}"{% if '/setup/majors/' in request.path %} aria-current="page"{% endif %}>Majors</a>
           <a class="nav-link{% if '/setup/subjects/' in request.path %} active{% endif %}" href="{% url 'subject_list' %}"{% if '/setup/subjects/' in request.path %} aria-current="page"{% endif %}>Subjects</a>

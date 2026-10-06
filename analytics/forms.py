@@ -97,8 +97,8 @@ class UploadForm(StyledFormMixin, forms.Form):
         return file
 
 
-class MasterUploadForm(StyledFormMixin, forms.Form):
-    file = forms.FileField(label="Five-sheet master workbook", help_text="Upload a .xlsx file with Departments, Majors, Subjects, Teachers, and Rooms sheets.")
+class SetupUploadForm(StyledFormMixin, forms.Form):
+    file = forms.FileField(label="Setup Excel workbook", help_text="Upload a .xlsx file with this setup type's template columns (10 MB maximum).")
 
     def clean_file(self):
         file = self.cleaned_data["file"]

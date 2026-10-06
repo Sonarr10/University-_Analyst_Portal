@@ -57,6 +57,7 @@ def validate_master_workbook(file):
     valid = {sheet: [] for sheet in SHEETS}
     issues = []
     summary = {sheet: {"total": len(frames[sheet]), "valid": 0, "rejected": 0} for sheet in SHEETS}
+    summary.update({"duplicate_rows": 0, "missing_value_rows": 0, "invalid_references": 0, "invalid_numeric_rows": 0})
     known_departments = {code.upper() for code in Department.objects.values_list("code", flat=True)}
     known_majors = {code.upper() for code in Major.objects.values_list("code", flat=True)}
     seen = {sheet: set() for sheet in SHEETS}
@@ -67,7 +68,9 @@ def validate_master_workbook(file):
             errors = []
             missing = [column for column in required if not row[column] and not (sheet == "Teachers" and column == "email")]
             if missing:
+                summary["missing_value_rows"] += 1
                 errors.append("Missing: " + ", ".join(missing))
+            invalid_reference = False
 
             if sheet in {"Departments", "Majors", "Subjects", "Rooms"}:
                 row["code"] = row["code"].upper()
@@ -79,6 +82,7 @@ def validate_master_workbook(file):
                 row["email"] = row["email"].lower()
                 identity = row["email"] or (row["name"].casefold(), row["department_code"])
             if identity in seen[sheet]:
+                summary["duplicate_rows"] += 1
                 errors.append("Duplicate record in sheet")
             seen[sheet].add(identity)
 
@@ -88,17 +92,20 @@ def validate_master_workbook(file):
             elif sheet == "Majors":
                 row["department_code"] = row["department_code"].upper()
                 if row["department_code"] and row["department_code"] not in known_departments:
+                    invalid_reference = True
                     errors.append("Unknown department_code")
                 if len(row["name"]) > 150:
                     errors.append("Name is too long")
             elif sheet == "Subjects":
                 row["major_code"] = row["major_code"].upper()
                 if row["major_code"] and row["major_code"] not in known_majors:
+                    invalid_reference = True
                     errors.append("Unknown major_code")
                 if len(row["name"]) > 150:
                     errors.append("Name is too long")
             elif sheet == "Teachers":
                 if row["department_code"] and row["department_code"] not in known_departments:
+                    invalid_reference = True
                     errors.append("Unknown department_code")
                 if len(row["name"]) > 150:
                     errors.append("Name is too long")
@@ -109,6 +116,7 @@ def validate_master_workbook(file):
                         errors.append("Invalid email address")
                 shifts = [part.strip().title() for part in row["available_shifts"].split(",") if part.strip()]
                 if not shifts or len(shifts) != len(set(shifts)) or any(shift not in Shift.values for shift in shifts):
+                    invalid_reference = True
                     errors.append("Available shifts must be unique Morning, Afternoon, or Evening values")
                 else:
                     row["available_shifts"] = shifts
@@ -117,12 +125,15 @@ def validate_master_workbook(file):
                     try:
                         row["capacity"] = positive_integer(row["capacity"])
                     except ValueError as exc:
+                        summary["invalid_numeric_rows"] += 1
                         errors.append(f"capacity: {exc}")
                 if row["active"]:
                     try:
                         row["active"] = active_boolean(row["active"])
                     except ValueError as exc:
                         errors.append(str(exc))
+
+            summary["invalid_references"] += int(invalid_reference)
 
             if errors:
                 summary[sheet]["rejected"] += 1
@@ -137,6 +148,9 @@ def validate_master_workbook(file):
 
     summary["rejected_rows"] = len(issues)
     summary["valid_rows"] = sum(summary[sheet]["valid"] for sheet in SHEETS)
+    total_rows = sum(summary[sheet]["total"] for sheet in SHEETS)
+    summary["total_rows"] = total_rows
+    summary["data_quality_percentage"] = round(summary["valid_rows"] / total_rows * 100, 1) if total_rows else None
     return summary, valid, issues
 
 

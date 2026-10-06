@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block title %}Import {{ title }}s · University Analytics{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <div>
+      <span class="technical-label">SETUP / {{ title|upper }}S</span>
+      <h1>Import {{ title }}s</h1>
+      <p>Validate a {{ title|lower }} workbook, review every issue, then import valid new rows.</p>
+    </div>
+    <a class="btn btn-outline-primary" href="{% url 'setup_template' kind %}">Download Template</a>
+  </div>
+  <div class="dashboard-card" style="max-width: 680px">
+    <p class="text-secondary small">The downloadable template includes clearly synthetic demo rows. Edit or remove them before importing your own data. Import setup in order: Departments, Majors, Subjects, Teachers, then Rooms.</p>
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {% for field in form %}
+        <div class="mb-3">
+          <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+          {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+        </div>
+      {% endfor %}
+      <button class="btn btn-primary" type="submit">Validate workbook</button>
+      <a class="btn btn-outline-secondary" href="{% url kind|add:'_list' %}">Cancel</a>
+    </form>
+  </div>
+{% endblock %}

@@ -5,9 +5,9 @@ from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
 from openpyxl import Workbook, load_workbook
 
-from .models import Attendance, Department, Major, Performance, Room, Shift, Student, Subject, Teacher, User
+from .models import Attendance, Department, ImportBatch, Major, Performance, Room, Shift, Student, Subject, Teacher, User
 from .capacity import MAX_STUDENTS_PER_SECTION, capacity_analysis, required_sections, section_occupancy
-from .demo_workbooks import demo_workbooks
+from .demo_workbooks import MASTER_ROWS, _workbook_bytes, demo_workbooks
 from .forms import TeacherForm
 from .master_import import validate_master_workbook
 from .services import capacity_rows, dashboard_context, validate_workbook
@@ -184,11 +184,9 @@ class TeacherDemoFlowTests(TestCase):
 
     def upload_and_confirm(self, kind):
         filename, payload = self.files[kind]
-        endpoint = "import_master_data" if kind == "master" else "upload_data"
         fields = {"file": SimpleUploadedFile(filename, payload, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
-        if kind != "master":
-            fields["dataset_type"] = kind
-        response = self.client.post(reverse(endpoint), fields)
+        fields["dataset_type"] = kind
+        response = self.client.post(reverse("upload_data"), fields)
         self.assertEqual(response.status_code, 302, response.content.decode()[:500])
         review = self.client.get(response.url)
         self.assertEqual(review.status_code, 200)
@@ -197,43 +195,60 @@ class TeacherDemoFlowTests(TestCase):
         self.assertTrue(confirmed.context["batch"].imported_at)
         return review
 
+    def setup_from_files(self):
+        """Import five independent synthetic setup workbooks in dependency order."""
+        first_review = None
+        for kind in ("department", "major", "subject", "teacher", "room"):
+            filename, payload = self.files[kind]
+            upload = SimpleUploadedFile(filename, payload)
+            response = self.client.post(reverse("setup_import", args=[kind]), {"file": upload})
+            self.assertEqual(response.status_code, 302, response.content.decode()[:500])
+            review = self.client.get(response.url)
+            self.assertEqual(review.status_code, 200)
+            self.client.post(response.url + "confirm/")
+            if first_review is None:
+                first_review = review
+        return first_review
+
     def test_complete_teacher_walkthrough(self):
         empty = self.client.get(reverse("dashboard"))
         self.assertContains(empty, "Build your analytics workspace")
         self.assertNotContains(empty, 'id="departmentChart"')
         self.assertContains(empty, "No Data")
 
-        self.assertRedirects(self.client.post(reverse("department_create"), {"code": "CSE", "name": "Computer Science and Engineering"}), reverse("department_list"))
-        self.assertRedirects(self.client.post(reverse("major_create"), {"code": "SE", "name": "Software Engineering", "department": Department.objects.get(code="CSE").pk}), reverse("major_list"))
+        self.assertRedirects(self.client.post(reverse("department_create"), {"code": "SCI", "name": "Science and Technology"}), reverse("department_list"))
+        self.assertRedirects(self.client.post(reverse("major_create"), {"code": "CSE", "name": "Computer Science and Engineering", "department": Department.objects.get(code="SCI").pk}), reverse("major_list"))
         setup_progress = self.client.get(reverse("dashboard"))
         self.assertTrue(setup_progress.context["onboarding_steps"][0]["done"])
         self.assertTrue(setup_progress.context["onboarding_steps"][1]["done"])
         self.assertEqual(self.client.get(reverse("upload_data") + "?dataset_type=performance").context["form"].initial["dataset_type"], "performance")
-        master_review = self.upload_and_confirm("master")
-        self.assertContains(master_review, "Departments")
-        self.assertEqual((Department.objects.count(), Major.objects.count(), Subject.objects.count(), Teacher.objects.count(), Room.objects.count()), (3, 4, 7, 6, 4))
+        setup_review = self.setup_from_files()
+        self.assertContains(setup_review, "DATA QUALITY")
+        self.assertEqual((Department.objects.count(), Major.objects.count(), Subject.objects.count(), Teacher.objects.count(), Room.objects.count()), (3, 7, 11, 6, 4))
 
-        self.upload_and_confirm("master")
-        self.assertEqual((Department.objects.count(), Major.objects.count(), Subject.objects.count(), Teacher.objects.count(), Room.objects.count()), (3, 4, 7, 6, 4))
+        self.setup_from_files()
+        self.assertEqual((Department.objects.count(), Major.objects.count(), Subject.objects.count(), Teacher.objects.count(), Room.objects.count()), (3, 7, 11, 6, 4))
         self.upload_and_confirm("enrollment")
-        self.assertEqual(Student.objects.count(), 185)
+        self.assertEqual(Student.objects.count(), 227)
         self.upload_and_confirm("performance")
         self.upload_and_confirm("attendance")
-        self.assertEqual(Performance.objects.count(), 397)
-        self.assertEqual(Attendance.objects.count(), 397)
+        self.assertEqual(Performance.objects.count(), 451)
+        self.assertEqual(Attendance.objects.count(), 451)
 
         analysis = capacity_analysis()
-        se_morning = next(row for row in analysis["groups"] if row["major__name"] == "Software Engineering" and row["shift"] == "Morning")
+        se_morning = next(row for row in analysis["groups"] if row["major__name"] == "Computer Science and Engineering" and row["shift"] == "Morning")
         self.assertEqual((se_morning["students"], se_morning["required"], se_morning["teacher_capacity"], se_morning["status"]), (70, 3, 2, "Over Capacity"))
-        cse_morning = next(pool for pool in analysis["teacher_pools"] if pool["department"] == "CSE" and pool["shift"] == "Morning")
+        cse_morning = next(pool for pool in analysis["teacher_pools"] if pool["department"] == "SCI" and pool["shift"] == "Morning")
         self.assertEqual((cse_morning["required"], cse_morning["capacity"], cse_morning["shortage"]), (5, 2, 3))
         bba_afternoon = next(row for row in analysis["groups"] if row["major__name"] == "Business Administration" and row["shift"] == "Afternoon")
         self.assertEqual(bba_afternoon["status"], "Near Capacity")
-        se_afternoon = next(row for row in analysis["groups"] if row["major__name"] == "Software Engineering" and row["shift"] == "Afternoon")
-        self.assertEqual(se_afternoon["status"], "Teacher Shortage")
+        se_afternoon = next(row for row in analysis["groups"] if row["major__name"] == "Computer Science and Engineering" and row["shift"] == "Afternoon")
+        self.assertEqual(se_afternoon["status"], "Available")
+        self.assertGreaterEqual(se_afternoon["supported_remaining_seats"], 25)
+        self.assertEqual(se_morning["recommended_shift"], Shift.AFTERNOON)
         bba_morning = next(row for row in analysis["groups"] if row["major__name"] == "Business Administration" and row["shift"] == "Morning")
         self.assertEqual(bba_morning["status"], "Room Capacity Limit")
-        english_evening = next(row for row in analysis["groups"] if row["major__name"] == "English Language" and row["shift"] == "Evening")
+        english_evening = next(row for row in analysis["groups"] if row["major__name"] == "English" and row["shift"] == "Evening")
         self.assertEqual(english_evening["status"], "Available")
         self.assertTrue(any(section["status"] == "Full" for section in analysis["occupancy"]))
         self.assertTrue(any(section["status"] == "Near Full" for section in analysis["occupancy"]))
@@ -241,14 +256,16 @@ class TeacherDemoFlowTests(TestCase):
         self.assertTrue(any(section["status"] == "Normal" for section in analysis["occupancy"]))
 
         context = dashboard_context()
+        self.assertIsNotNone(context["last_imported_at"])
         insight_text = " ".join(item["text"] for item in context["insights"])
         self.assertIn("Database Systems has the lowest average score", insight_text)
-        self.assertIn("12 students have at least one Critical attendance record", insight_text)
+        self.assertIn("15 students have at least one Critical attendance record", insight_text)
         self.assertIn("Matched low-attendance results average", insight_text)
-        self.assertIn("CSE Morning requires 5 teachers", insight_text)
+        self.assertIn("SCI Morning requires 5 teachers", insight_text)
         self.assertIn("Morning requires 6 simultaneous shared rooms", insight_text)
         self.assertNotIn("create another room", insight_text.lower())
-        self.assertEqual(context["kpis"]["students"], 185)
+        self.assertEqual(context["kpis"]["students"], 227)
+        self.assertContains(self.client.get(reverse("dashboard")), "Last successful import")
         self.assertEqual(len(context["availability_alerts"]), 3)
         self.assertEqual(context["availability_alerts"][0]["status"], "Over Capacity")
         previews = context["dashboard_insights"]
@@ -256,7 +273,7 @@ class TeacherDemoFlowTests(TestCase):
         self.assertEqual(len(previews), 5)
         self.assertTrue(all(len(item["summary"]) < 80 for item in previews))
         self.assertEqual([{"danger": 0, "warning": 1, "info": 2}[item["level"]] for item in previews], sorted({"danger": 0, "warning": 1, "info": 2}[item["level"]] for item in previews))
-        self.assertTrue(any("Teacher shortage in CSE Morning" == item["summary"] for item in previews))
+        self.assertTrue(any("Teacher shortage in SCI Morning" == item["summary"] for item in previews))
         self.assertEqual(context["insights"][0]["level"], "danger")
         self.assertEqual([{"danger": 0, "warning": 1, "info": 2}[item["level"]] for item in context["insights"]], sorted({"danger": 0, "warning": 1, "info": 2}[item["level"]] for item in context["insights"]))
         self.assertContains(self.client.get(reverse("insights")), "5 sections across its majors")
@@ -266,8 +283,7 @@ class TeacherDemoFlowTests(TestCase):
             self.assertContains(response, "portalCharts.")
 
     def test_master_workbook_rejects_bad_relationships_and_values(self):
-        filename, payload = self.files["master"]
-        book = load_workbook(BytesIO(payload))
+        book = load_workbook(BytesIO(_workbook_bytes(MASTER_ROWS)))
         book["Majors"]["C2"] = "UNKNOWN"
         book["Teachers"]["D2"] = "Morning,Weekend"
         output = BytesIO(); book.save(output); output.seek(0)
@@ -553,3 +569,189 @@ class SharedCapacityAnalysisTests(TestCase):
         self.assertContains(response, "No enrollment data yet.")
         self.assertNotContains(response, "⚠ Shortage")
         self.assertEqual(response.context["availability_alerts"], [])
+
+
+class PresentationPolishTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(email="polish@example.com", full_name="Polish Analyst", password="SafePass123!")
+        self.client.force_login(self.user)
+        self.cse = Department.objects.create(code="CSE", name="Computer Science")
+        self.bus = Department.objects.create(code="BUS", name="Business")
+        self.se = Major.objects.create(code="SE", name="Software Engineering", department=self.cse)
+        self.bba = Major.objects.create(code="BBA", name="Business", department=self.bus)
+        self.database = Subject.objects.create(code="DB101", name="Database Systems", major=self.se)
+        self.business = Subject.objects.create(code="BUS101", name="Business Basics", major=self.bba)
+
+    def student(self, number, department=None, major=None, shift=Shift.MORNING, name="Student"):
+        return Student.objects.create(student_id=f"ST{number:03}", student_name=name,
+                                      department=department or self.cse, major=major or self.se, shift=shift)
+
+    def test_enrollment_quality_counts_and_missing_columns(self):
+        rows = [
+            ["ST001", "Valid", "CSE", "SE", "Morning"],
+            ["", "Missing ID", "CSE", "SE", "Morning"],
+            ["ST001", "Duplicate", "CSE", "SE", "Morning"],
+            ["ST004", "Unknown department", "BAD", "SE", "Morning"],
+            ["ST005", "Unknown major", "CSE", "BAD", "Morning"],
+            ["ST006", "Wrong shift", "CSE", "SE", "Weekend"],
+            ["ST007", "Wrong relation", "CSE", "BBA", "Morning"],
+        ]
+        summary, valid, issues = validate_workbook(
+            workbook(["student_id", "student_name", "department_code", "major_code", "shift"], rows), "enrollment")
+        self.assertEqual((summary["total_rows"], summary["valid_rows"], summary["rejected_rows"]), (7, 1, 6))
+        self.assertEqual((summary["duplicate_rows"], summary["missing_value_rows"], summary["invalid_references"]), (1, 1, 3))
+        self.assertEqual(summary["data_quality_percentage"], 14.3)
+        self.assertEqual(len(issues), 6)
+        self.assertEqual(len(valid), 1)
+        with self.assertRaisesRegex(ValueError, "Missing required columns: shift"):
+            validate_workbook(workbook(["student_id", "student_name", "department_code", "major_code"], []), "enrollment")
+        empty_summary, empty_rows, empty_issues = validate_workbook(
+            workbook(["student_id", "student_name", "department_code", "major_code", "shift"], []), "enrollment")
+        self.assertIsNone(empty_summary["data_quality_percentage"])
+        self.assertEqual((empty_rows, empty_issues), ([], []))
+
+    def test_performance_quality_rejects_bad_references_and_numbers(self):
+        for number in range(1, 5):
+            self.student(number)
+        rows = [["ST001", "DB101", 0], ["UNKNOWN", "DB101", 80], ["ST001", "BAD", 80],
+                ["ST002", "DB101", "abc"], ["ST003", "DB101", -1], ["ST004", "DB101", 101]]
+        summary, valid, issues = validate_workbook(workbook(["student_id", "subject_code", "score"], rows), "performance")
+        self.assertEqual((summary["valid_rows"], summary["rejected_rows"], summary["invalid_references"], summary["invalid_numeric_rows"]), (1, 5, 2, 3))
+        self.assertEqual(valid[0]["score"], 0)
+        self.assertTrue(all(issue["errors"] for issue in issues))
+
+    def test_enrollment_conflicting_reimport_is_rejected_case_insensitively(self):
+        self.student(1)
+        response = self.client.post(reverse("upload_data"), {"dataset_type": "enrollment",
+            "file": workbook(["student_id", "student_name", "department_code", "major_code", "shift"],
+                             [["st001", "Updated Name", "CSE", "SE", "Morning"]])})
+        self.assertEqual(response.status_code, 302)
+        review = self.client.get(response.url)
+        self.assertEqual(review.context["batch"].summary["valid_rows"], 0)
+        self.assertEqual(review.context["batch"].summary["duplicate_rows"], 1)
+        self.client.post(response.url + "confirm/")
+        self.assertEqual(Student.objects.count(), 1)
+        self.assertEqual(Student.objects.get().student_name, "Student")
+
+    def test_attendance_quality_rejects_fractional_and_invalid_sessions(self):
+        for number in range(1, 5):
+            self.student(number)
+        rows = [["ST001", "DB101", 20, 4], ["UNKNOWN", "DB101", 20, 0], ["ST001", "BAD", 20, 0],
+                ["ST001", "DB101", 0, 0], ["ST002", "DB101", 20, -1],
+                ["ST003", "DB101", 20, 21], ["ST004", "DB101", 20.5, 2]]
+        summary, valid, issues = validate_workbook(
+            workbook(["student_id", "subject_code", "total_sessions", "absent_count"], rows), "attendance")
+        self.assertEqual((summary["valid_rows"], summary["rejected_rows"], summary["invalid_references"], summary["invalid_numeric_rows"]), (1, 6, 2, 4))
+        self.assertEqual((valid[0]["total_sessions"], valid[0]["absent_count"]), (20, 4))
+        self.assertTrue(any("whole numbers" in error for issue in issues for error in issue["errors"]))
+        with self.assertRaisesRegex(ValueError, "Excel file could not be read"):
+            invalid = BytesIO(b"not an xlsx file")
+            validate_workbook(invalid, "attendance")
+
+    def test_filters_scatter_and_excel_exports_use_matching_records(self):
+        cse_student = self.student(1, name="=SUM(1,1)")
+        bus_student = self.student(2, department=self.bus, major=self.bba, shift=Shift.EVENING)
+        for student, subject, score, percentage, status in [
+            (cse_student, self.database, 62, 75, "Warning"),
+            (bus_student, self.business, 90, 100, "Good"),
+        ]:
+            Performance.objects.create(student=student, subject=subject, score=score, letter_grade="B", grade_point=3, passed=True)
+            Attendance.objects.create(student=student, subject=subject, total_sessions=20,
+                                      absent_count=5 if status == "Warning" else 0,
+                                      attendance_percentage=percentage, status=status)
+        query = f"?department={self.cse.pk}&major={self.se.pk}&shift=Morning"
+        enrollment = self.client.get(reverse("enrollment_dashboard") + query)
+        performance = self.client.get(reverse("performance_dashboard") + query)
+        attendance = self.client.get(reverse("attendance_dashboard") + query)
+        self.assertEqual(enrollment.context["filtered_students"], 1)
+        self.assertEqual(len(enrollment.context["capacity_rows"]), 1)
+        self.assertEqual(performance.context["subject_chart"]["labels"], ["Database Systems"])
+        self.assertEqual(attendance.context["status_chart"]["values"], [0.0, 1.0, 0.0, 0.0])
+        self.assertEqual(len(attendance.context["scatter"]), 1)
+        self.assertEqual(attendance.context["scatter"][0]["student_name"], "=SUM(1,1)")
+        self.assertEqual(attendance.context["scatter"][0]["status"], "Warning")
+        for kind in ("enrollment", "performance", "attendance"):
+            response = self.client.get(reverse("export_analytics", args=[kind]) + query)
+            self.assertEqual(response.status_code, 200)
+            report = load_workbook(BytesIO(response.content), read_only=False)
+            detail = {"enrollment": "Enrollment Data", "performance": "Student Performance", "attendance": "Attendance Records"}[kind]
+            self.assertEqual(report[detail].max_row, 2)
+            self.assertTrue(report["Overview"]._charts)
+            if kind == "performance":
+                self.assertEqual(report[detail]["B2"].value, "'=SUM(1,1)")
+        other = self.client.get(reverse("attendance_dashboard") + f"?department={self.cse.pk}&major={self.bba.pk}")
+        self.assertEqual(other.context["filters"]["major"], None)
+
+    def test_partial_dashboard_hides_empty_charts_and_keeps_zero_score(self):
+        student = self.student(1)
+        dashboard = self.client.get(reverse("dashboard"))
+        self.assertNotContains(dashboard, 'id="scoreChart"')
+        self.assertNotContains(dashboard, 'id="attendanceChart"')
+        self.assertNotContains(dashboard, 'id="scatterChart"')
+        Performance.objects.create(student=student, subject=self.database, score=0,
+                                   letter_grade="F", grade_point=0, passed=False)
+        dashboard = self.client.get(reverse("dashboard"))
+        self.assertContains(dashboard, "<strong>0.0</strong>", html=True)
+        self.assertContains(dashboard, 'id="scoreChart"')
+        self.assertNotContains(dashboard, 'id="attendanceChart"')
+        attendance = self.client.get(reverse("attendance_dashboard"))
+        self.assertContains(attendance, "No attendance data yet")
+        Performance.objects.all().delete()
+        Attendance.objects.create(student=student, subject=self.database, total_sessions=20,
+                                  absent_count=0, attendance_percentage=100, status="Good")
+        dashboard = self.client.get(reverse("dashboard"))
+        self.assertContains(dashboard, 'id="attendanceChart"')
+        self.assertNotContains(dashboard, 'id="scoreChart"')
+        self.assertNotContains(dashboard, 'id="scatterChart"')
+        attendance = self.client.get(reverse("attendance_dashboard"))
+        self.assertContains(attendance, "No matched Attendance and Performance records yet")
+        self.assertNotContains(attendance, 'id="attendanceScatterChart"')
+        self.client.logout()
+        self.assertRedirects(self.client.get(reverse("export_analytics", args=["attendance"])),
+                             f"{reverse('login')}?next={reverse('export_analytics', args=['attendance'])}")
+
+    def test_master_quality_summary_and_review_page(self):
+        book = load_workbook(BytesIO(_workbook_bytes(MASTER_ROWS)))
+        book["Departments"].append(["SCI", "Duplicate department"])
+        book["Subjects"]["B2"] = None
+        book["Teachers"]["C2"] = "UNKNOWN"
+        book["Rooms"]["B2"] = 0
+        output = BytesIO()
+        book.save(output)
+        output.seek(0)
+        summary, _, issues = validate_master_workbook(output)
+        self.assertEqual((summary["duplicate_rows"], summary["missing_value_rows"],
+                          summary["invalid_references"], summary["invalid_numeric_rows"]), (1, 1, 1, 1))
+        self.assertEqual(summary["valid_rows"] + summary["rejected_rows"], summary["total_rows"])
+        self.assertEqual(len(issues), 4)
+
+        self.student(1)
+        response = self.client.post(reverse("upload_data"), {"dataset_type": "performance",
+            "file": workbook(["student_id", "subject_code", "score"], [["ST001", "DB101", 50], ["ST001", "DB101", 200]])})
+        self.assertEqual(response.status_code, 302)
+        review = self.client.get(response.url)
+        self.assertContains(review, "DATA QUALITY")
+        self.assertContains(review, "50.0%")
+        self.assertContains(review, "INVALID NUMERIC ROWS")
+
+    def test_navigation_pages_render_with_no_imports(self):
+        for name in ("dashboard", "insights", "upload_data", "enrollment_dashboard",
+                     "performance_dashboard", "attendance_dashboard", "department_list", "major_list",
+                     "subject_list", "teacher_list", "room_list", "teacher_create"):
+            with self.subTest(page=name):
+                self.assertEqual(self.client.get(reverse(name)).status_code, 200)
+        for kind in ("department", "major", "subject", "teacher", "room"):
+            self.assertEqual(self.client.get(reverse("setup_import", args=[kind])).status_code, 200)
+            self.assertEqual(self.client.get(reverse("setup_template", args=[kind])).status_code, 200)
+
+    def test_older_import_review_does_not_invent_untracked_counts(self):
+        batch = ImportBatch.objects.create(
+            dataset_type="performance", filename="older.xlsx", uploaded_by=self.user,
+            summary={"total_rows": 2, "valid_rows": 1, "rejected_rows": 1,
+                     "duplicate_rows": 0, "missing_value_rows": 0, "invalid_references": 1},
+            valid_rows=[], issues=[],
+        )
+        response = self.client.get(reverse("import_review", args=[batch.pk]))
+        self.assertContains(response, "50.0%")
+        self.assertIsNone(response.context["quality"]["invalid_numeric_rows"])
+        self.assertContains(response, "count was not tracked")
