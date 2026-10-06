@@ -58,3 +58,21 @@
 .insight-preview-row{flex-wrap:wrap}
 .insight-preview-row>span:nth-child(2){flex:1;min-width:150px}
 @media(max-width:575px){.insight-preview-row>a{margin-left:40px!important}}
+
+/* One bounded scroll area for attendance records; the page keeps its normal scroll. */
+.attendance-table-wrapper{
+  max-width:100%;
+  max-height:560px;
+  overflow-x:auto;
+  overflow-y:auto;
+  border-radius:0 0 9px 9px;
+}
+.attendance-table-wrapper .data-table{min-width:640px}
+.attendance-table-wrapper thead th{
+  position:sticky;
+  top:0;
+  z-index:2;
+  background:#F8F6F0;
+  box-shadow:inset 0 -1px 0 var(--border);
+}
+.attendance-table-wrapper:focus-visible{outline:2px solid var(--blue);outline-offset:-2px}

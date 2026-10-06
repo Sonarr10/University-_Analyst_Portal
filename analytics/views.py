@@ -123,7 +123,10 @@ def attendance_dashboard(request):
     scatter, _, _ = matched_scatter(performance, records)
     context = {**filter_context, "has_data": records.exists(), "has_any_data": Attendance.objects.exists(),
                "average": round(float(average), 1) if average is not None else None,
-               "statuses": statuses, "low_attendance": records.exclude(status="Good").order_by("attendance_percentage")[:20],
+               "statuses": statuses,
+               "low_attendance": records.exclude(status="Good").order_by(
+                   "attendance_percentage", "student__student_id", "subject__code"
+               ),
                "subject_chart": {"labels": [x["subject__name"] for x in subjects], "values": [float(x["average"]) for x in subjects]},
                "status_chart": chart(statuses.keys(), statuses.values()), "scatter": scatter}
     return render(request, "analytics/attendance_dashboard.html", context)

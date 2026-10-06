@@ -586,6 +586,27 @@ class PresentationPolishTests(TestCase):
         return Student.objects.create(student_id=f"ST{number:03}", student_name=name,
                                       department=department or self.cse, major=major or self.se, shift=shift)
 
+    def test_low_attendance_table_includes_all_records_without_truncation(self):
+        for number in range(1, 28):
+            student = self.student(number)
+            Attendance.objects.create(
+                student=student, subject=self.database, total_sessions=20,
+                absent_count=5, attendance_percentage=75, status="Warning",
+            )
+        good_student = self.student(28)
+        Attendance.objects.create(
+            student=good_student, subject=self.database, total_sessions=20,
+            absent_count=0, attendance_percentage=100, status="Good",
+        )
+
+        response = self.client.get(reverse("attendance_dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["low_attendance"]), 27)
+        self.assertContains(response, 'class="attendance-table-wrapper"')
+        self.assertContains(response, "ST001 · Student")
+        self.assertContains(response, "ST027 · Student")
+        self.assertNotContains(response, "ST028 · Student")
+
     def test_enrollment_quality_counts_and_missing_columns(self):
         rows = [
             ["ST001", "Valid", "CSE", "SE", "Morning"],
