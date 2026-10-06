@@ -7,7 +7,27 @@ const portalCharts = (() => {
   const doughnut = (id,payload,colors) => new Chart(document.getElementById(id),{type:'doughnut',data:{labels:payload.labels,datasets:[{data:payload.values,backgroundColor:colors,borderWidth:2,borderColor:'#FFFDF8'}]},options:{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:{legend:{position:'bottom'}}}});
   const capacity = (id,payload) => new Chart(document.getElementById(id),{type:'bar',data:{labels:payload.labels,datasets:[{label:'Required sections',data:payload.required,backgroundColor:blue},{label:'Teacher capacity',data:payload.teachers,backgroundColor:'#94A3B8'}]},options:{...options(false),plugins:{legend:{display:true,position:'bottom'}}}});
   const rooms = (id,payload) => new Chart(document.getElementById(id),{type:'bar',data:{labels:payload.labels,datasets:[{label:'Required rooms',data:payload.required,backgroundColor:blue},{label:'Shared active rooms',data:payload.rooms,backgroundColor:'#94A3B8'}]},options:{...options(false),plugins:{legend:{display:true,position:'bottom'}}}});
-  const scatter = (id,payload) => new Chart(document.getElementById(id),{type:'scatter',data:{datasets:[{label:'Student / Subject',data:payload,backgroundColor:blueSoft,pointRadius:5}]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{title:{display:true,text:'Attendance %'},min:0,max:100,grid:{color:grid}},y:{title:{display:true,text:'Score'},min:0,max:100,grid:{color:grid}}}}});
+  const scatter = (id, payload) => new Chart(document.getElementById(id), {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        label: 'Student / Subject',
+        data: payload,
+        backgroundColor: blueSoft,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: {padding: {right: 12, top: 8}},
+      scales: {
+        x: {title: {display: true, text: 'Attendance %'}, min: 0, max: 105, ticks: {stepSize: 25, includeBounds: false}, grid: {color: grid}},
+        y: {title: {display: true, text: 'Score'}, min: 0, max: 105, ticks: {stepSize: 25, includeBounds: false}, grid: {color: grid}}
+      }
+    }
+  });
   return {
     dashboard(){bar('departmentChart',data('department-data'));bar('majorChart',data('major-data'),true);bar('shiftChart',data('shift-data'));bar('requiredMajorChart',data('required-major-data'));capacity('capacityChart',data('capacity-data'));bar('scoreChart',data('score-data'),true);doughnut('passChart',data('pass-data'),[blue,'#D8D4C8']);doughnut('attendanceChart',data('attendance-data'),['#16A34A','#D97706','#EA580C','#DC2626']);scatter('scatterChart',data('scatter-data'));},
     enrollment(){bar('departmentChart',data('department-data'));bar('majorChart',data('major-data'),true);bar('shiftChart',data('shift-data'));bar('requiredMajorChart',data('required-major-data'));capacity('capacityChart',data('capacity-data'));rooms('roomChart',data('room-data'));},

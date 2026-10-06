@@ -4,6 +4,10 @@ A Django Version 1 decision-support portal for university enrollment, capacity, 
 
 ## Setup and run
 
+Make sure **Python 3.12+** is installed.
+
+### Linux / macOS
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
@@ -12,14 +16,57 @@ python manage.py migrate
 python manage.py runserver
 ```
 
+### Windows
+
+#### PowerShell
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
+```
+
+If PowerShell prevents the virtual environment activation script from running, use:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1
+```
+
+#### Command Prompt (CMD)
+
+```cmd
+python -m venv .venv
+.venv\Scripts\activate.bat
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
+```
+
+> On some Windows installations, use `py` instead of `python`:
+>
+> ```powershell
+> py -m venv .venv
+> py manage.py migrate
+> py manage.py runserver
+> ```
+
+### Open the portal
+
 Open `http://127.0.0.1:8000/`, choose **Create an account**, and register with full name, email, and password. Passwords use Django's secure hashing; there is no preset password or public demo account.
 
-To run verification:
+### Verification
+
+On Linux, macOS, or Windows:
 
 ```bash
 python manage.py check
 python manage.py test
 ```
+
+### Generate demo files
 
 To generate the four classroom demo workbooks without changing the database:
 
