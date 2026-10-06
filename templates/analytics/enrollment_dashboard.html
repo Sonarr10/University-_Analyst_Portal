@@ -7,7 +7,7 @@
     <div>
       <span class="technical-label">ANALYSIS / CAPACITY</span>
       <h1>Enrollment &amp; Capacity</h1>
-      <p>How many sections are needed, and do shared teachers and rooms support them?</p>
+      <p>How many class groups are needed, and do shared teachers and rooms support them?</p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
       <a class="btn btn-outline-primary" href="{% url 'export_analytics' 'enrollment' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">Export Excel Report</a>
@@ -27,7 +27,7 @@
   {% else %}
     <div class="kpi-grid mb-4">
       <div class="kpi-card"><span>STUDENTS</span><strong>{{ filtered_students }}</strong></div>
-      <div class="kpi-card"><span>REQUIRED SECTIONS</span><strong>{{ total_required }}</strong><small>Sum of major + shift groups</small></div>
+      <div class="kpi-card"><span>REQUIRED CLASS GROUPS</span><strong>{{ total_required }}</strong><small>Sum of major + shift groups</small></div>
       <div class="kpi-card"><span>SHARED ROOMS</span><strong>{{ kpis.rooms }}</strong><small>Active classrooms across all shifts</small></div>
       <div class="kpi-card"><span>TEACHERS</span><strong>{{ kpis.teachers }}</strong><small>{% if teacher_shortage_pools %}<span class="capacity-alert">{{ teacher_shortage_pools|length }} department/shift groups need teachers</span>{% else %}Teacher capacity sufficient{% endif %}</small></div>
     </div>
@@ -36,19 +36,19 @@
       <div class="col-lg-6"><div class="dashboard-card chart-card"><h3>Enrollment by Department</h3><canvas id="departmentChart"></canvas></div></div>
       <div class="col-lg-6"><div class="dashboard-card chart-card"><h3>Enrollment by Major</h3><canvas id="majorChart"></canvas></div></div>
       <div class="col-lg-6"><div class="dashboard-card chart-card"><h3>Students by Shift</h3><canvas id="shiftChart"></canvas></div></div>
-      <div class="col-lg-6"><div class="dashboard-card chart-card"><h3>Required Sections by Major</h3><canvas id="requiredMajorChart"></canvas></div></div>
-      <div class="col-lg-6"><div class="dashboard-card chart-card"><h3>Required Sections vs Available Teachers</h3><p class="card-note">Department and shift totals.</p><canvas id="capacityChart"></canvas></div></div>
+      <div class="col-lg-6"><div class="dashboard-card chart-card"><h3>Required Class Groups by Major</h3><canvas id="requiredMajorChart"></canvas></div></div>
+      <div class="col-lg-6"><div class="dashboard-card chart-card"><h3>Required Class Groups vs Available Teachers</h3><p class="card-note">Department and shift totals.</p><canvas id="capacityChart"></canvas></div></div>
       <div class="col-lg-6"><div class="dashboard-card chart-card"><h3>Required Rooms vs Shared Rooms</h3><p class="card-note">Shift-wide demand; rooms are not assigned to majors.</p><canvas id="roomChart"></canvas></div></div>
     </div>
 
     <div class="dashboard-card p-0 overflow-hidden mt-4">
       <div class="card-heading">
-        <div><span class="technical-label">QUESTION / CAN WE SUPPORT DEMAND?</span><h2>Capacity status by major and shift</h2><p class="card-note mb-0">Potential extra sections are independent scenarios using shared spare resources; they are not reserved or assigned.</p></div>
+        <div><span class="technical-label">QUESTION / CAN WE SUPPORT DEMAND?</span><h2>Capacity status by major and shift</h2><p class="card-note mb-0">Potential extra class groups are independent scenarios using shared spare resources; they are not reserved or assigned.</p></div>
       </div>
       <div class="table-responsive">
         <table class="table data-table mb-0">
           <thead>
-            <tr><th>Department</th><th>Major</th><th>Shift</th><th>Students</th><th>Required sections</th><th>Teacher capacity</th><th>Required rooms</th><th>Shift rooms available</th><th>Remaining seats</th><th>Status</th><th>Recommended shift</th></tr>
+            <tr><th>Department</th><th>Major</th><th>Shift</th><th>Students</th><th>Required Class Groups</th><th>Teacher capacity</th><th>Required rooms</th><th>Shift rooms available</th><th>Remaining seats</th><th>Status</th><th>Recommended shift</th></tr>
           </thead>
           <tbody>
             {% for row in capacity_rows %}
@@ -61,7 +61,7 @@
                 <td>{{ row.teacher_capacity }} <small class="d-block text-secondary">{{ row.department_required }} required across department</small></td>
                 <td>{{ row.required_rooms }}</td>
                 <td>{{ row.shift_rooms_available }} <small class="d-block text-secondary">{{ row.shift_rooms_used }} required shift-wide</small></td>
-                <td>{{ row.remaining_seats }} <small class="d-block text-secondary">in calculated sections</small>{% if row.can_open_section %}<small class="d-block text-primary">Another section could support up to 25 more.</small>{% endif %}</td>
+                <td>{{ row.remaining_seats }} <small class="d-block text-secondary">in calculated class groups</small>{% if row.can_open_section %}<small class="d-block text-primary">Another class group could support up to 25 more.</small>{% endif %}</td>
                 <td>
                   {% if row.status == 'Available' %}
                     <span class="badge status-good">Available</span>
@@ -82,7 +82,7 @@
 
     <div class="dashboard-card mt-4">
       <h2 class="section-title mb-2">Analysis rules</h2>
-      <p class="card-note mb-0">Maximum 25 students per calculated section. Each active teacher supports one section in each selected shift. Active rooms are shared across majors by shift; no room or teacher is assigned here.</p>
+      <p class="card-note mb-0">Required Class Groups shows how many student groups are needed when each group supports a maximum of 25 students. Each active teacher supports one class group in each selected shift. Active rooms are shared across majors by shift; no room or teacher is assigned here.</p>
     </div>
 
     <div class="row g-4 mt-1">
@@ -91,7 +91,7 @@
           <div class="card-heading"><div><span class="technical-label">SHARED / DEPARTMENT + SHIFT</span><h2>Teacher capacity</h2></div></div>
           <div class="table-responsive">
             <table class="table data-table mb-0">
-              <thead><tr><th>Department / Shift</th><th>Required sections</th><th>Active teachers available</th><th>Status</th></tr></thead>
+              <thead><tr><th>Department / Shift</th><th>Required Class Groups</th><th>Active teachers available</th><th>Status</th></tr></thead>
               <tbody>
                 {% for pool in teacher_pools %}
                   <tr><td>{{ pool.department }} / {{ pool.shift }}</td><td>{{ pool.required }}</td><td>{{ pool.capacity }}</td><td>{% if pool.shortage %}<span class="badge status-critical">Need {{ pool.shortage }} more teacher{{ pool.shortage|pluralize }}</span>{% elif pool.status == 'At Capacity' %}<span class="badge status-warning">At Capacity</span>{% else %}<span class="badge status-good">Good</span> <small>{{ pool.spare }} spare</small>{% endif %}</td></tr>
@@ -122,15 +122,14 @@
     </div>
 
     <div class="dashboard-card p-0 overflow-hidden mt-4">
-      <div class="card-heading"><div><span class="technical-label">SECTION / 25 SEATS MAX</span><h2>Analytical section breakdown</h2><p class="card-note mb-0">A full calculated section does not, by itself, make a major and shift full. No rooms or teachers are assigned here.</p></div></div>
+      <div class="card-heading"><div><span class="technical-label">GROUP / 25 SEATS MAX</span><h2>Capacity by Major and Shift</h2><p class="card-note mb-0">Each row is a calculated 25-seat group, not an official class assignment. A full group does not, by itself, make a major and shift full.</p></div></div>
       <div class="table-responsive">
         <table class="table data-table mb-0">
-          <thead><tr><th>Major / Shift</th><th>Section</th><th>Students</th><th>Occupancy</th><th>Seats remaining / Status</th></tr></thead>
+          <thead><tr><th>Major / Shift</th><th>Students</th><th>Occupancy</th><th>Seats remaining / Status</th></tr></thead>
           <tbody>
             {% for section in section_occupancy %}
               <tr>
                 <td>{{ section.major }} / {{ section.shift }}</td>
-                <td>{{ section.section }}</td>
                 <td>{{ section.students }} / {{ section.maximum }}</td>
                 <td><div class="occupancy-track"><div class="occupancy-fill" style="width: {{ section.percentage }}%"></div></div><small>{{ section.percentage }}%</small></td>
                 <td>

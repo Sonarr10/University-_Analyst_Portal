@@ -2,7 +2,7 @@ const portalCharts = (() => {
   const blue = '#2563EB', blueSoft = 'rgba(37,99,235,.65)', grid = 'rgba(17,24,39,.08)';
   Chart.defaults.font.family = 'Inter, sans-serif'; Chart.defaults.color = '#6B7280';
   const data = id => JSON.parse(document.getElementById(id).textContent);
-  const measures = {departmentChart:'Students',majorChart:'Students',shiftChart:'Students',requiredMajorChart:'Sections',scoreChart:'Average score',subjectChart:'Average score',gradeChart:'Records',attendanceSubjectChart:'Attendance %'};
+  const measures = {departmentChart:'Students',majorChart:'Students',shiftChart:'Students',requiredMajorChart:'Class groups',scoreChart:'Average score',subjectChart:'Average score',gradeChart:'Records',attendanceSubjectChart:'Attendance %'};
   const options = (horizontal=false, measure='') => {
     const scales = {x:{beginAtZero:true,grid:{color:grid}},y:{beginAtZero:true,grid:{color:grid}}};
     scales[horizontal?'x':'y'].title = {display:Boolean(measure),text:measure};
@@ -10,7 +10,7 @@ const portalCharts = (() => {
   };
   const bar = (id, payload, horizontal=false, color=blue) => new Chart(document.getElementById(id), {type:'bar',data:{labels:payload.labels,datasets:[{data:payload.values,backgroundColor:color,borderRadius:4}]},options:options(horizontal,measures[id])});
   const doughnut = (id,payload,colors) => new Chart(document.getElementById(id),{type:'doughnut',data:{labels:payload.labels,datasets:[{data:payload.values,backgroundColor:colors,borderWidth:2,borderColor:'#FFFDF8'}]},options:{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:{legend:{position:'bottom'}}}});
-  const capacity = (id,payload) => new Chart(document.getElementById(id),{type:'bar',data:{labels:payload.labels,datasets:[{label:'Required sections',data:payload.required,backgroundColor:blue},{label:'Teacher capacity',data:payload.teachers,backgroundColor:'#94A3B8'}]},options:{...options(false,'Sections'),plugins:{legend:{display:true,position:'bottom'}}}});
+  const capacity = (id,payload) => new Chart(document.getElementById(id),{type:'bar',data:{labels:payload.labels,datasets:[{label:'Required class groups',data:payload.required,backgroundColor:blue},{label:'Teacher capacity',data:payload.teachers,backgroundColor:'#94A3B8'}]},options:{...options(false,'Class groups'),plugins:{legend:{display:true,position:'bottom'}}}});
   const rooms = (id,payload) => new Chart(document.getElementById(id),{type:'bar',data:{labels:payload.labels,datasets:[{label:'Required rooms',data:payload.required,backgroundColor:blue},{label:'Shared active rooms',data:payload.rooms,backgroundColor:'#94A3B8'}]},options:{...options(false,'Rooms'),plugins:{legend:{display:true,position:'bottom'}}}});
   const scatter = (id, payload) => new Chart(document.getElementById(id), {
     type: 'scatter',

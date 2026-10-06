@@ -137,11 +137,11 @@ def _enrollment(book, overview, helper, selected):
     groups = filter_capacity_rows(analysis["groups"], selected)
     students = list(filter_students(Student.objects.select_related("department", "major"), selected).order_by("student_id"))
     group_lookup = {(row["major_id"], row["shift"]): row for row in groups}
-    _sheet(book, "Enrollment Data", ["Student ID", "Student Name", "Department", "Major", "Shift", "Required Sections", "Capacity Status"],
+    _sheet(book, "Enrollment Data", ["Student ID", "Student Name", "Department", "Major", "Shift", "Required Class Groups", "Capacity Status"],
            ([s.student_id, s.student_name, s.department.code, s.major.name, s.shift,
              group_lookup[(s.major_id, s.shift)]["required"], group_lookup[(s.major_id, s.shift)]["status"]] for s in students),
            "No enrollment data available in this scope")
-    _sheet(book, "Major & Shift Analysis", ["Department", "Major", "Shift", "Students", "Required Sections", "Current Section Seats", "Remaining Current Seats"],
+    _sheet(book, "Major & Shift Analysis", ["Department", "Major", "Shift", "Students", "Required Class Groups", "Current Group Seats", "Remaining Current Group Seats"],
            ([g["major__department__code"], g["major__name"], g["shift"], g["students"], g["required"],
              g["current_supported_capacity"], g["remaining_seats"]] for g in groups),
            "No major/shift groups available in this scope")
@@ -149,7 +149,7 @@ def _enrollment(book, overview, helper, selected):
     teacher_pools = [p for p in analysis["teacher_pools"] if (p["department"], p["shift"]) in pairs]
     shifts = {g["shift"] for g in groups}
     room_pools = [p for p in analysis["shift_pools"] if p["shift"] in shifts]
-    _sheet(book, "Capacity Analysis", ["Department", "Major", "Shift", "Students", "Required Sections", "Department Shift Demand (Pool)", "Active Department Teachers (Pool)", "Required Rooms", "Shared Shift Room Demand (Pool)", "Active Shared Rooms (Pool)", "Supported Remaining Seats", "Status", "Recommended Shift", "Recommended Supported Seats"],
+    _sheet(book, "Capacity Analysis", ["Department", "Major", "Shift", "Students", "Required Class Groups", "Department Shift Demand (Pool)", "Active Department Teachers (Pool)", "Required Rooms", "Shared Shift Room Demand (Pool)", "Active Shared Rooms (Pool)", "Supported Remaining Seats", "Status", "Recommended Shift", "Recommended Supported Seats"],
            ([g["major__department__code"], g["major__name"], g["shift"], g["students"], g["required"],
              g["department_required"], g["teacher_capacity"], g["required_rooms"], g["shift_rooms_used"],
              g["shift_rooms_available"], g["supported_remaining_seats"], g["status"],
@@ -167,7 +167,7 @@ def _enrollment(book, overview, helper, selected):
         ("Majors in Scope", len({s.major_id for s in students}), None),
         ("Active Teachers (University)", Teacher.objects.filter(active=True).count(), None),
         ("Active Rooms (Shared)", Room.objects.filter(active=True).count(), None),
-        ("Required Sections", total_required, None),
+        ("Required Class Groups", total_required, None),
         ("Groups Near Capacity", sum(g["status"] == "Near Capacity" for g in groups), None),
         ("Groups at Capacity / Full", sum(g["status"] == "Full" for g in groups), None),
         ("Teacher Shortage Pools", sum(p["shortage"] > 0 for p in teacher_pools), None),
@@ -180,12 +180,12 @@ def _enrollment(book, overview, helper, selected):
     specs = [
         ("Enrollment by Department", dept_counts), ("Enrollment by Major", major_counts),
         ("Enrollment by Shift", {shift: shift_counts[shift] for shift in Shift.values if shift_counts[shift]}),
-        ("Required Sections by Major & Shift", {f'{g["major__name"]} · {g["shift"]}': g["required"] for g in groups}),
+        ("Required Class Groups by Major & Shift", {f'{g["major__name"]} · {g["shift"]}': g["required"] for g in groups}),
     ]
     for index, (title, counts) in enumerate(specs):
         _add_chart(overview, helper, index, title, list(counts), list(counts.values()), horizontal=index in {1, 3})
-    _comparison(overview, helper, 4, "Department / Shift: Required vs Active Teachers",
-                [f'{p["department"]} · {p["shift"]}' for p in teacher_pools], "Required sections",
+    _comparison(overview, helper, 4, "Department / Shift: Required Class Groups vs Active Teachers",
+                [f'{p["department"]} · {p["shift"]}' for p in teacher_pools], "Required class groups",
                 [p["required"] for p in teacher_pools], "Active teachers", [p["capacity"] for p in teacher_pools])
     _comparison(overview, helper, 5, "Shared Room Demand by Shift (University-wide)",
                 [p["shift"] for p in room_pools], "Required rooms", [p["required"] for p in room_pools],
@@ -193,13 +193,13 @@ def _enrollment(book, overview, helper, selected):
     insights = []
     for p in teacher_pools:
         if p["shortage"]:
-            insights.append(["Critical", "Teacher Capacity", f'{p["department"]} {p["shift"]}: {p["required"]} sections require {p["required"]} teachers; {p["capacity"]} active teachers available. Shortage: {p["shortage"]}.'])
+            insights.append(["Critical", "Teacher Capacity", f'{p["department"]} {p["shift"]}: {p["required"]} class groups require {p["required"]} teachers; {p["capacity"]} active teachers available. Shortage: {p["shortage"]}.'])
     for p in room_pools:
         if p["shortage"]:
-            insights.append(["Warning", "Shared Rooms", f'{p["shift"]}: {p["required"]} simultaneous sections exceed {p["capacity"]} active shared rooms by {p["shortage"]}.'])
+            insights.append(["Warning", "Shared Rooms", f'{p["shift"]}: {p["required"]} simultaneous class groups exceed {p["capacity"]} active shared rooms by {p["shortage"]}.'])
     for g in groups:
         if g["status"] != "Available":
-            finding = f'{g["major__name"]} {g["shift"]}: {g["students"]} students, {g["required"]} sections, {g["status"]}. '
+            finding = f'{g["major__name"]} {g["shift"]}: {g["students"]} students, {g["required"]} required class groups, {g["status"]}. '
             finding += f'{g["recommended_shift"]} offers {g["recommended_capacity"]} supported seats for the same major.' if g["recommended_shift"] else "No alternative shift currently has sufficient supported capacity."
             insights.append(["Warning", "Enrollment Availability", finding])
     _insights(book, insights)

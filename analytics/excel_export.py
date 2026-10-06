@@ -181,7 +181,7 @@ def build_analytics_workbook(generated_at=None):
 
     _data_sheet(
         enrollment,
-        ["Student ID", "Student Name", "Department", "Major", "Shift", "Group Required Sections", "Group Capacity Status"],
+        ["Student ID", "Student Name", "Department", "Major", "Shift", "Required Class Groups", "Group Capacity Status"],
         ([student.student_id, student.student_name, student.department.code, student.major.name, student.shift,
           group_by_major_shift[(student.major_id, student.shift)]["required"],
           group_by_major_shift[(student.major_id, student.shift)]["status"]]
@@ -208,7 +208,7 @@ def build_analytics_workbook(generated_at=None):
     )
     _data_sheet(
         capacity,
-        ["Department", "Major", "Shift", "Students", "Required Sections", "Teacher Capacity",
+        ["Department", "Major", "Shift", "Students", "Required Class Groups", "Teacher Capacity",
          "Required Rooms", "Active Rooms", "Rooms Remaining", "Remaining Supported Seats",
          "Capacity Status", "Room Capacity Status", "Recommended Alternative Shift"],
         ([row["major__department__code"], row["major__name"], row["shift"], row["students"],
@@ -226,7 +226,7 @@ def build_analytics_workbook(generated_at=None):
          [int(value) for value in context["enrollment_major"]["values"]], "bar", True, None),
         ("Students by Shift", context["enrollment_shift"]["labels"],
          [int(value) for value in context["enrollment_shift"]["values"]], "bar", False, None),
-        ("Required Sections by Major / Shift", required_labels,
+        ("Required Class Groups by Major / Shift", required_labels,
          [row["required"] for row in groups], "bar", True, None),
         ("Average Score by Subject", context["subject_scores"]["labels"],
          context["subject_scores"]["values"], "bar", True, None),

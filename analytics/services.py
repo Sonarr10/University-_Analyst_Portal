@@ -269,15 +269,15 @@ def dashboard_context():
         insights.append({
             "level": "info",
             "category": "Enrollment & Capacity",
-            "text": f'{row["major__name"]} {row["shift"]} has {row["students"]} students: ceil({row["students"]} / {MAX_STUDENTS_PER_SECTION}) = {row["required"]} sections and {row["required_rooms"]} analytical rooms. Current sections have {row["remaining_seats"]} seats remaining.',
-            "decision": "Use these calculated sections for capacity review; no students or rooms have been assigned.",
+            "text": f'{row["major__name"]} {row["shift"]} has {row["students"]} students: ceil({row["students"]} / {MAX_STUDENTS_PER_SECTION}) = {row["required"]} required class groups and {row["required_rooms"]} analytical rooms. Current class groups have {row["remaining_seats"]} seats remaining.',
+            "decision": "Use these calculated class groups for capacity review; no students or rooms have been assigned.",
         })
         if row["status"] != "Available":
             level = "danger" if row["status"] in {"Over Capacity", "Full"} else "warning"
             insights.append({
                 "level": level,
                 "category": "Enrollment & Capacity",
-                "text": f'{row["major__name"]} {row["shift"]} is {row["status"]}. Current section seats remaining: {row["remaining_seats"]}; shared teacher shortage: {row["teacher_shortage"]}; shift room shortage: {row["room_shortage"]}.',
+                "text": f'{row["major__name"]} {row["shift"]} is {row["status"]}. Current class-group seats remaining: {row["remaining_seats"]}; shared teacher shortage: {row["teacher_shortage"]}; shift room shortage: {row["room_shortage"]}.',
                 "decision": row["recommendation"],
             })
             if row["status"] in {"Near Capacity", "Full", "Over Capacity"}:
@@ -299,7 +299,7 @@ def dashboard_context():
             insights.append({
                 "level": level,
                 "category": "Teacher Capacity",
-                "text": f'{pool["department"]} {pool["shift"]} requires {pool["required"]} teachers for {pool["required"]} sections across its majors, but only {pool["capacity"]} active teachers are available. {pool["shortage"]} additional teacher(s) required.',
+                "text": f'{pool["department"]} {pool["shift"]} requires {pool["required"]} teachers for {pool["required"]} class groups across its majors, but only {pool["capacity"]} active teachers are available. {pool["shortage"]} additional teacher(s) required.',
                 "decision": "Review teacher availability for this department and shift.",
             })
             dashboard_candidates.append({
@@ -311,7 +311,7 @@ def dashboard_context():
             insights.append({
                 "level": "info",
                 "category": "Teacher Capacity",
-                "text": f'{pool["department"]} {pool["shift"]} is at teacher capacity: {pool["required"]} required sections and {pool["capacity"]} active teachers.',
+                "text": f'{pool["department"]} {pool["shift"]} is at teacher capacity: {pool["required"]} required class groups and {pool["capacity"]} active teachers.',
                 "decision": "Monitor new enrollment because there is no spare teacher capacity.",
             })
     for pool in capacity["shift_pools"]:
@@ -330,16 +330,16 @@ def dashboard_context():
             insights.append({
                 "level": "info",
                 "category": "Enrollment & Capacity",
-                "text": f'{pool["shift"]} is currently using all {pool["capacity"]} active rooms for {pool["required"]} analytical sections.',
-                "decision": "Existing section seats may remain, but another simultaneous section needs shared room capacity.",
+                "text": f'{pool["shift"]} is currently using all {pool["capacity"]} active rooms for {pool["required"]} analytical class groups.',
+                "decision": "Existing class-group seats may remain, but another simultaneous class group needs shared room capacity.",
             })
     for section in capacity["occupancy"]:
         if section["status"] in {"Full", "Near Full", "Getting Full"}:
             insights.append({
                 "level": "info",
                 "category": "Enrollment & Capacity",
-                "text": f'{section["major"]} {section["shift"]} {section["section"]} is {section["status"].lower()} at {section["students"]}/{section["maximum"]} students, with {section["remaining_seats"]} seats remaining.',
-                "decision": "This is a conceptual section only; use the major/shift status for supported availability.",
+                "text": f'A calculated class group for {section["major"]} {section["shift"]} is {section["status"].lower()} at {section["students"]}/{section["maximum"]} students, with {section["remaining_seats"]} seats remaining.',
+                "decision": "This is a conceptual group only; use the major/shift status for supported availability.",
             })
 
     subject_stats = list(performance.values("subject__name").annotate(

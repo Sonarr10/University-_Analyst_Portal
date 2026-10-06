@@ -107,11 +107,11 @@ Enrollment references must already exist in setup data. Performance and attendan
 - One email-based Admin / Data Analyst account type; all internal routes require login.
 - Master-data CRUD for departments, majors, subjects, rooms, and teachers.
 - Morning, Afternoon, and Evening shifts only.
-- Required sections = `ceil(students / 25)`, grouped by major and shift.
-- Each active teacher contributes one section of capacity in each selected shift, counted by department and shift. Teacher subjects can be selected only from that department, up to three per teacher. No timetable or individual assignment is inferred.
-- Shared room demand is the sum of required sections across all majors in each shift. All active rooms count for each shift; rooms are never permanently assigned to majors. The portal compares shift demand with active rooms but never recommends building rooms.
-- Supported remaining enrollment is current calculated section seats plus potential sections only when both a spare department/shift teacher and a spare shared room exist. Near Capacity means at most five supported seats remain; Full means none remain and another section is unsupported. Alternatives are scored for other shifts of the same major only.
-- Section occupancy labels are Normal (0–19), Getting Full (20–22), Near Full (23–24), and Full (25).
+- Required Class Groups = `ceil(students / 25)`, grouped by major and shift. This shows how many student groups are needed when each group supports a maximum of 25 students.
+- Each active teacher contributes one class group of capacity in each selected shift, counted by department and shift. Teacher subjects can be selected only from that department, up to three per teacher. No timetable or individual assignment is inferred.
+- Shared room demand is the sum of required class groups across all majors in each shift. All active rooms count for each shift; rooms are never permanently assigned to majors. The portal compares shift demand with active rooms but never recommends building rooms.
+- Supported remaining enrollment is empty seats within current calculated groups plus potential group seats only when both a spare department/shift teacher and a spare shared room exist. Near Capacity means at most five supported seats remain; Full means none remain and another group is unsupported. Alternatives are scored for other shifts of the same major only.
+- Calculated group occupancy labels are Normal (0–19), Getting Full (20–22), Near Full (23–24), and Full (25).
 - Pass threshold is 50. Grades and average grade points use the defined scale and are explicitly presented as simplified, not official GPA.
 - Attendance status is based on attendance percentage: Good ≥85%, Warning ≥75%, High Risk ≥60%, Critical <60%.
 - Dashboard values and insights come from database queries; no KPI values are hardcoded.

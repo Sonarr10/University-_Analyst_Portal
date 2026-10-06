@@ -109,6 +109,14 @@ class PortalTests(TestCase):
         self.client.login(username="analyst@example.com", password="SafePass123!")
         for url in ["dashboard", "enrollment_dashboard", "performance_dashboard", "attendance_dashboard"]:
             self.assertEqual(self.client.get(reverse(url)).status_code, 200)
+        enrollment = self.client.get(reverse("enrollment_dashboard"))
+        self.assertContains(enrollment, "Required Class Groups")
+        self.assertContains(enrollment, "Capacity by Major and Shift")
+        self.assertContains(enrollment, "25 / 25")
+        self.assertContains(enrollment, "1 / 25")
+        self.assertNotContains(enrollment, "Required Sections")
+        self.assertNotContains(enrollment, "<th>Section</th>")
+        self.assertNotContains(enrollment, "Section A")
 
 
 class DashboardPresentationTests(TestCase):
@@ -276,7 +284,7 @@ class TeacherDemoFlowTests(TestCase):
         self.assertTrue(any("Teacher shortage in SCI Morning" == item["summary"] for item in previews))
         self.assertEqual(context["insights"][0]["level"], "danger")
         self.assertEqual([{"danger": 0, "warning": 1, "info": 2}[item["level"]] for item in context["insights"]], sorted({"danger": 0, "warning": 1, "info": 2}[item["level"]] for item in context["insights"]))
-        self.assertContains(self.client.get(reverse("insights")), "5 sections across its majors")
+        self.assertContains(self.client.get(reverse("insights")), "5 class groups across its majors")
         for name in ("dashboard", "enrollment_dashboard", "performance_dashboard", "attendance_dashboard"):
             response = self.client.get(reverse(name))
             self.assertEqual(response.status_code, 200)
@@ -698,6 +706,9 @@ class PresentationPolishTests(TestCase):
             detail = {"enrollment": "Enrollment Data", "performance": "Student Performance", "attendance": "Attendance Records"}[kind]
             self.assertEqual(report[detail].max_row, 2)
             self.assertTrue(report["Overview"]._charts)
+            if kind == "enrollment":
+                self.assertEqual(report[detail]["F1"].value, "Required Class Groups")
+                self.assertEqual(report["Capacity Analysis"]["E1"].value, "Required Class Groups")
             if kind == "performance":
                 self.assertEqual(report[detail]["B2"].value, "'=SUM(1,1)")
         other = self.client.get(reverse("attendance_dashboard") + f"?department={self.cse.pk}&major={self.bba.pk}")
